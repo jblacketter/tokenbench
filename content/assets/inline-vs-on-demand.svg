@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Inline vs On-Demand Data Delivery</title>
+  <desc id="desc">Concept diagram showing full inline delivery versus minimal response with optional follow-up read.</desc>
+  <rect width="1200" height="720" fill="#f8fafc"/>
+  <text x="600" y="52" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" fill="#0f172a">Inline vs On-Demand Data Delivery</text>
+
+  <rect x="70" y="100" width="500" height="560" rx="18" fill="#fee2e2" stroke="#fecaca"/>
+  <text x="320" y="142" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#991b1b">Inline (Expensive)</text>
+
+  <rect x="630" y="100" width="500" height="560" rx="18" fill="#dcfce7" stroke="#bbf7d0"/>
+  <text x="880" y="142" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#14532d">On-Demand (Efficient)</text>
+
+  <rect x="120" y="200" width="400" height="70" rx="10" fill="#fff1f2" stroke="#fda4af"/>
+  <text x="320" y="243" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#7f1d1d">Tool returns full payload every call</text>
+
+  <rect x="120" y="300" width="400" height="70" rx="10" fill="#fff1f2" stroke="#fda4af"/>
+  <text x="320" y="343" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#7f1d1d">LLM stores repeated context</text>
+
+  <rect x="120" y="400" width="400" height="70" rx="10" fill="#fff1f2" stroke="#fda4af"/>
+  <text x="320" y="443" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#7f1d1d">Higher cost and context pressure</text>
+
+  <line x1="320" y1="270" x2="320" y2="300" stroke="#b91c1c" stroke-width="3"/>
+  <polygon points="320,300 314,290 326,290" fill="#b91c1c"/>
+  <line x1="320" y1="370" x2="320" y2="400" stroke="#b91c1c" stroke-width="3"/>
+  <polygon points="320,400 314,390 326,390" fill="#b91c1c"/>
+
+  <rect x="680" y="200" width="400" height="70" rx="10" fill="#f0fdf4" stroke="#86efac"/>
+  <text x="880" y="243" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#166534">Tool returns minimal response</text>
+
+  <rect x="680" y="300" width="400" height="70" rx="10" fill="#f0fdf4" stroke="#86efac"/>
+  <text x="880" y="343" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#166534">LLM requests details only when needed</text>
+
+  <rect x="680" y="400" width="400" height="70" rx="10" fill="#f0fdf4" stroke="#86efac"/>
+  <text x="880" y="443" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#166534">Lower cost and cleaner context</text>
+
+  <line x1="880" y1="270" x2="880" y2="300" stroke="#15803d" stroke-width="3"/>
+  <polygon points="880,300 874,290 886,290" fill="#15803d"/>
+  <line x1="880" y1="370" x2="880" y2="400" stroke="#15803d" stroke-width="3"/>
+  <polygon points="880,400 874,390 886,390" fill="#15803d"/>
+
+  <text x="600" y="640" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#0f172a">Principle: Return only the data needed for the next decision.</text>
+</svg>
