@@ -1,0 +1,121 @@
+{
+  "cases": [
+    {
+      "approaches": [
+        {
+          "label": "Full user record",
+          "source": "estimated",
+          "tokens": 440
+        },
+        {
+          "label": "Seat-usage projection",
+          "source": "estimated",
+          "tokens": 27
+        }
+      ],
+      "baseline_label": "Full user record",
+      "baseline_tokens": 440,
+      "best_label": "Seat-usage projection",
+      "best_tokens": 27,
+      "category": "API Interaction",
+      "ratio_vs_baseline": 16.3,
+      "reduction_pct": 93.9,
+      "saved_tokens": 413,
+      "task": "Filtered Response"
+    },
+    {
+      "approaches": [
+        {
+          "label": "Full snapshot every step (\u00d76)",
+          "source": "estimated",
+          "tokens": 1434
+        },
+        {
+          "label": "Budget: last 2 full, rest referenced",
+          "source": "estimated",
+          "tokens": 545
+        }
+      ],
+      "baseline_label": "Full snapshot every step (\u00d76)",
+      "baseline_tokens": 1434,
+      "best_label": "Budget: last 2 full, rest referenced",
+      "best_tokens": 545,
+      "category": "Agent Loop",
+      "ratio_vs_baseline": 2.63,
+      "reduction_pct": 62.0,
+      "saved_tokens": 889,
+      "task": "Snapshot Budget"
+    },
+    {
+      "approaches": [
+        {
+          "label": "MCP Server (inline snapshots)",
+          "source": "measured",
+          "tokens": 3075
+        },
+        {
+          "label": "playwright-cli (snapshot\u2192file)",
+          "source": "measured",
+          "tokens": 800
+        }
+      ],
+      "baseline_label": "MCP Server (inline snapshots)",
+      "baseline_tokens": 3075,
+      "best_label": "playwright-cli (snapshot\u2192file)",
+      "best_tokens": 800,
+      "category": "Browser Automation",
+      "ratio_vs_baseline": 3.84,
+      "reduction_pct": 74.0,
+      "saved_tokens": 2275,
+      "task": "Reference + Fetch"
+    },
+    {
+      "approaches": [
+        {
+          "label": "Read whole files into context",
+          "source": "estimated",
+          "tokens": 509
+        },
+        {
+          "label": "ripgrep match + targeted line range",
+          "source": "estimated",
+          "tokens": 102
+        }
+      ],
+      "baseline_label": "Read whole files into context",
+      "baseline_tokens": 509,
+      "best_label": "ripgrep match + targeted line range",
+      "best_tokens": 102,
+      "category": "Code Search",
+      "ratio_vs_baseline": 4.99,
+      "reduction_pct": 80.0,
+      "saved_tokens": 407,
+      "task": "Targeted ripgrep vs whole-file read"
+    },
+    {
+      "approaches": [
+        {
+          "label": "Inline the whole document",
+          "source": "estimated",
+          "tokens": 538
+        },
+        {
+          "label": "Retrieve only relevant chunks",
+          "source": "estimated",
+          "tokens": 119
+        }
+      ],
+      "baseline_label": "Inline the whole document",
+      "baseline_tokens": 538,
+      "best_label": "Retrieve only relevant chunks",
+      "best_tokens": 119,
+      "category": "Document Analysis",
+      "ratio_vs_baseline": 4.52,
+      "reduction_pct": 77.9,
+      "saved_tokens": 419,
+      "task": "Chunk-and-retrieve vs whole-document inline"
+    }
+  ],
+  "chars_per_token": 4,
+  "schema_version": 1
+}

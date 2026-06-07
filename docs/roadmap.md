@@ -47,12 +47,17 @@ Exploring how to effectively build AI-powered applications with token efficiency
   - Case studies: RAG chunking, API response shaping, multi-agent delegation, code search, DB queries
 
 ### Phase 4: Benchmarks
-- **Status:** Not Started
-- **Description:** Standardized benchmarks for token efficiency across common AI application patterns. Living benchmark that tracks how tool/model updates change the numbers.
-- **Key Deliverables:**
-  - Standard task set (browser automation, code search, API interaction, document analysis)
-  - Multi-approach measurements per task
-  - Published benchmark results
+- **Status:** Implemented (MVP) — see `benchmarks/` and `tokenbench/bench/`
+- **Description:** Standardized benchmarks for token efficiency across common AI application patterns. A living benchmark that tracks how tool/model updates change the numbers: the current results are committed to `benchmarks/results.json` and `tokenbench bench --check` fails if a fresh run diverges, so every change to the numbers is an intentional, reviewable diff. Run with `python -m tokenbench bench`.
+- **Delivered (MVP):**
+  - Standard task set across 5 categories (browser automation, API interaction, agent loop, code search, document analysis), each with ≥2 measured approaches
+  - Generalized multi-approach benchmark cases built on the Phase 3 harness; the pattern registry is the single source for Phase 3-derived numbers (no duplication)
+  - Committed, regenerable `benchmarks/results.json` (schema-versioned, deterministic) + `tokenbench bench [--json] [--check] [--category]` CLI
+  - Determinism, coverage, bridge, and artifact-in-sync tests
+- **Future:**
+  - Historical time-series of results to chart drift across tool/model updates
+  - Exact-tokenizer mode alongside the char-proxy
+  - Published/exported benchmark results
 
 ## Core Principles
 

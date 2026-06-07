@@ -58,6 +58,21 @@ def build_parser() -> argparse.ArgumentParser:
         "--family", default=None, help="Filter to one family (e.g. 'Query')"
     )
 
+    p_bench = sub.add_parser(
+        "bench", help="Run the standardized token-efficiency benchmarks (offline)"
+    )
+    p_bench.add_argument(
+        "--json", action="store_true", help="Emit the canonical results JSON artifact"
+    )
+    p_bench.add_argument(
+        "--check",
+        action="store_true",
+        help="Verify the committed benchmarks/results.json is in sync (exit 1 if not)",
+    )
+    p_bench.add_argument(
+        "--category", default=None, help="Filter the table to one category"
+    )
+
     return parser
 
 
@@ -128,6 +143,33 @@ def cmd_patterns(args) -> int:
     return 0
 
 
+def cmd_bench(args) -> int:
+    from .bench import canonical_json, check_results, measure_all, render_table
+
+    if args.check:
+        problems = check_results()
+        if problems:
+            print("Benchmark results OUT OF SYNC:")
+            for p in problems:
+                print(f"  - {p}")
+            print("\nRegenerate with: tokenbench bench --json > benchmarks/results.json")
+            return 1
+        print("Benchmark results in sync with committed artifact.")
+        return 0
+    if args.json:
+        print(canonical_json(), end="")
+        return 0
+    rows = measure_all()
+    if args.category:
+        wanted = args.category.lower()
+        rows = [r for r in rows if r["category"].lower() == wanted]
+        if not rows:
+            print(f"No benchmark cases in category {args.category!r}.")
+            return 1
+    print(render_table(rows))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     handlers = {
@@ -135,6 +177,7 @@ def main(argv: list[str] | None = None) -> int:
         "serve": cmd_serve,
         "status": cmd_status,
         "patterns": cmd_patterns,
+        "bench": cmd_bench,
     }
     return handlers[args.command](args)
 

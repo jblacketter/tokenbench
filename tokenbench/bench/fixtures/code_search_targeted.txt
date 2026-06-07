@@ -1,0 +1,12 @@
+$ rg -n "def validate" src/
+src/auth/session.py:30:    def validate(self, token: str) -> bool:
+
+src/auth/session.py:30-37 (targeted read):
+    def validate(self, token: str) -> bool:
+        session = self._sessions.get(token)
+        if session is None:
+            return False
+        if session.is_expired(time.time()):
+            del self._sessions[token]
+            return False
+        return True

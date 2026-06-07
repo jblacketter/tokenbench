@@ -1,0 +1,77 @@
+===== src/auth/session.py (entire file inlined into context) =====
+import time
+import hashlib
+from dataclasses import dataclass
+
+
+@dataclass
+class Session:
+    user_id: str
+    token: str
+    created_at: float
+    expires_at: float
+
+    def is_expired(self, now: float) -> bool:
+        return now >= self.expires_at
+
+
+class SessionStore:
+    def __init__(self, ttl_seconds: int = 3600):
+        self.ttl_seconds = ttl_seconds
+        self._sessions: dict[str, Session] = {}
+
+    def create(self, user_id: str) -> Session:
+        now = time.time()
+        token = hashlib.sha256(f"{user_id}{now}".encode()).hexdigest()
+        session = Session(user_id, token, now, now + self.ttl_seconds)
+        self._sessions[token] = session
+        return session
+
+    def validate(self, token: str) -> bool:
+        session = self._sessions.get(token)
+        if session is None:
+            return False
+        if session.is_expired(time.time()):
+            del self._sessions[token]
+            return False
+        return True
+
+    def revoke(self, token: str) -> None:
+        self._sessions.pop(token, None)
+
+
+===== src/auth/password.py (entire file inlined into context) =====
+import hashlib
+import os
+
+
+def hash_password(password: str, salt: bytes | None = None) -> str:
+    salt = salt or os.urandom(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 100_000)
+    return salt.hex() + ":" + digest.hex()
+
+
+def verify_password(password: str, stored: str) -> bool:
+    salt_hex, _ = stored.split(":")
+    return hash_password(password, bytes.fromhex(salt_hex)) == stored
+
+
+===== src/api/routes.py (entire file inlined into context) =====
+from .auth.session import SessionStore
+
+store = SessionStore()
+
+
+def login(user_id: str, password: str) -> str:
+    # ... validation omitted ...
+    return store.create(user_id).token
+
+
+def logout(token: str) -> None:
+    store.revoke(token)
+
+
+def me(token: str) -> dict:
+    if not store.validate(token):
+        raise PermissionError("invalid session")
+    return {"ok": True}

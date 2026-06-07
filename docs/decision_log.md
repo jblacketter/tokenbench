@@ -6,6 +6,44 @@ This log tracks important decisions made during the project.
 
 ---
 
+## 2026-06-07: Benchmarks = a committed, regenerable results artifact with a sync guard
+
+**Decision:** Implement Phase 4 as a multi-approach benchmark suite
+(`tokenbench/bench/`) whose canonical results are committed to
+`benchmarks/results.json`, with `tokenbench bench --check` (and a test) failing if a
+fresh run diverges from the committed file.
+
+**Context:** The roadmap calls for a *living* benchmark that "tracks how tool/model
+updates change the numbers." For that to be meaningful, a change in the numbers must
+be visible and intentional, not silent. The reviewer (codex) asked specifically to
+keep JSON sorted/stable, include `schema_version` and `chars_per_token`, and route
+all Phase 3-derived numbers through the pattern→benchmark bridge.
+
+**Alternatives Considered:**
+- Recompute-only (no committed artifact): nothing to diff against, so drift is
+  invisible — defeats the "living benchmark" goal.
+- A test that hard-codes expected numbers: brittle and scattered; a single canonical
+  artifact is one obvious place to review changes.
+- Re-measuring pattern numbers inside the bench module: would duplicate the Phase 3
+  source of truth and let the two phases disagree.
+
+**Rationale:** A committed, schema-versioned, deterministically-sorted artifact makes
+every numbers change a reviewable `git diff` on one file. The pattern registry stays
+the sole source for Phase 3 numbers via `cases._from_scenario`, so patterns and
+benchmarks can't diverge. Everything is offline and dependency-free (char-proxy plus
+real measured overrides), consistent with Phases 2–3. This closes the Phase 3
+follow-up to share one measurement source between the pattern library and benchmarks.
+
+**Decided By:** Human + Codex + Claude review
+
+**Phase:** benchmarks
+
+**Follow-ups:**
+- Add a historical time-series of `results.json` snapshots to chart drift over time.
+- Offer an exact-tokenizer mode alongside the character proxy.
+
+---
+
 ## 2026-06-07: Pattern Library = measured docs generated from a code source-of-truth
 
 **Decision:** Implement Phase 3 as a `patterns/` documentation tree whose
