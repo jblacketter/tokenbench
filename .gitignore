@@ -17,3 +17,7 @@ Thumbs.db
 # Environment
 .env
 .env.local
+
+# Local usage store (contains the user's own usage metadata)
+data/*.sqlite3
+data/*.sqlite3-journal

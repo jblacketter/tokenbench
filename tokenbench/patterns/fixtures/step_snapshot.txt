@@ -1,0 +1,32 @@
+- document "New Deal — ClearPath"
+  - banner
+    - link "ClearPath" [ref=e1]
+    - navigation
+      - link "Dashboard" [ref=e2]
+      - link "Deals" [ref=e3]
+      - link "Reports" [ref=e4]
+      - button "Account menu" [ref=e5]
+  - main
+    - heading "Create New Deal" level=1
+    - form
+      - textbox "First Name" [ref=e10]
+      - textbox "Last Name" [ref=e11]
+      - textbox "Email" [ref=e12]
+      - textbox "Phone" [ref=e13]
+      - combobox "State" [ref=e14]
+        - option "Alabama"
+        - option "Alaska"
+        - option "Arizona"
+        - option "Arkansas"
+        - option "California"
+        - option "Colorado"
+        - option "Connecticut"
+        - option "Delaware"
+        - option "Florida"
+        - option "Georgia"
+      - textbox "Deal Amount" [ref=e15]
+      - combobox "Stage" [ref=e16]
+      - button "Save Draft" [ref=e17]
+      - button "Submit Deal" [ref=e18]
+  - contentinfo
+    - text "Build v3.1.5818"

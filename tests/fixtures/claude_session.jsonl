@@ -1,0 +1,4 @@
+{"type":"summary","summary":"meta row with no usage"}
+{"type":"assistant","sessionId":"claude-sess-1","timestamp":"2026-06-01T10:00:00.000Z","message":{"model":"claude-opus-4","usage":{"input_tokens":1000,"cache_creation_input_tokens":200,"cache_read_input_tokens":500,"output_tokens":300},"content":"SECRET_PROMPT_TEXT_alpha def my_secret_function(): api_key='sk-LEAKME-111'"}}
+{"type":"assistant","sessionId":"claude-sess-1","timestamp":"2026-06-01T10:05:00.000Z","message":{"model":"claude-opus-4","usage":{"input_tokens":1500,"cache_creation_input_tokens":0,"cache_read_input_tokens":1700,"output_tokens":450},"content":"SECRET_RESPONSE_TEXT_beta password=hunter2 source code: class Foo {}"}}
+{"type":"user","sessionId":"claude-sess-1","timestamp":"2026-06-01T10:06:00.000Z","message":{"role":"user","content":"SECRET_USER_PROMPT_gamma"}}
