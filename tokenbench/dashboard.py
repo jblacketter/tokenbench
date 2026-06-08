@@ -398,17 +398,36 @@ footer { padding: 16px 32px; color: #6b7080; font-size: 12px; }
 """
 
 
-def render_html(store: UsageStore) -> str:
-    analytics = Analytics(store)
+def _scope_line(scope: dict[str, Any]) -> str:
+    """Human-readable scope descriptor for the dashboard header."""
+    if not scope["scoped"]:
+        return "machine-wide · all projects"
+    proj = html.escape(str(scope["project"]))
+    return (
+        f"scoped to <strong>{proj}</strong> · {scope['token_share']}% of machine "
+        f"tokens ({_fmt(scope['scoped_tokens'])} / {_fmt(scope['machine_tokens'])})"
+    )
+
+
+def render_html(store: UsageStore, project: str | None = None) -> str:
+    analytics = Analytics(store, project=project)
     s = analytics.summary()
+    scope = analytics.scope_info()
     now = _now_epoch()
     codex_limits = LimitAnalytics(store).current_status(now_epoch=now)
     claude_limits = claude_budget_status(analytics, DEFAULT_CLAUDE_BUDGET, now_epoch=now)
     cards = build_feedback(analytics, limit_status=codex_limits)
-    cost_usd = api_equivalent_usd([dict(r) for r in store.all_events()])
+    # API-equivalent value follows the active scope (uses the already-filtered rows).
+    cost_usd = api_equivalent_usd(analytics.rows)
 
     range_str = (
         f"{s.first_day} → {s.last_day}" if s.first_day else "no data yet"
+    )
+    # Codex rate limits are an account signal, not per-project; say so when scoped.
+    limits_note = (
+        '<p class="muted small">Rate limits are account-wide, not project-scoped.</p>'
+        if scope["scoped"]
+        else ""
     )
 
     stats = "".join(
@@ -428,12 +447,12 @@ def render_html(store: UsageStore) -> str:
 <body>
 <header>
   <h1>TokenBench — local token usage</h1>
-  <p>Claude Code + Codex CLI · {range_str} · privacy-first (no prompts/code stored)</p>
+  <p>Claude Code + Codex CLI · {range_str} · {_scope_line(scope)} · privacy-first (no prompts/code stored)</p>
 </header>
 <main>
   <section class="wide"><h2>Overview</h2><div class="stat-grid">{stats}</div></section>
 
-  <section class="wide"><h2>Limits</h2>{_limits_section(codex_limits, claude_limits)}</section>
+  <section class="wide"><h2>Limits</h2>{limits_note}{_limits_section(codex_limits, claude_limits)}</section>
 
   <section class="wide"><h2>Receipts</h2>{_receipts_table(analytics.provider_windows())}</section>
 
@@ -459,12 +478,13 @@ def render_html(store: UsageStore) -> str:
 </body></html>"""
 
 
-def render_json(store: UsageStore) -> dict[str, Any]:
-    analytics = Analytics(store)
+def render_json(store: UsageStore, project: str | None = None) -> dict[str, Any]:
+    analytics = Analytics(store, project=project)
     now = _now_epoch()
     codex_limits = LimitAnalytics(store).current_status(now_epoch=now)
     claude_limits = claude_budget_status(analytics, DEFAULT_CLAUDE_BUDGET, now_epoch=now)
     return {
+        "scope": analytics.scope_info(),
         "summary": analytics.summary().as_dict(),
         "tokens_by_day": analytics.tokens_by_day(),
         "provider_split": analytics.provider_split(),
@@ -479,12 +499,12 @@ def render_json(store: UsageStore) -> dict[str, Any]:
         "scale_equivalents": equivalents_as_dicts(analytics.summary().total_tokens),
         "burn_rate": analytics.burn_rate(now_epoch=now),
         "limits": {"codex": codex_limits, "claude": claude_limits},
-        "api_equivalent_usd": api_equivalent_usd([dict(r) for r in store.all_events()]),
+        "api_equivalent_usd": api_equivalent_usd(analytics.rows),
         "feedback": [c.as_dict() for c in build_feedback(analytics, limit_status=codex_limits)],
     }
 
 
-def _make_handler(db_path: Path | str):
+def _make_handler(db_path: Path | str, project: str | None = None):
     class Handler(BaseHTTPRequestHandler):
         def _send(self, body: bytes, content_type: str) -> None:
             self.send_response(200)
@@ -496,11 +516,11 @@ def _make_handler(db_path: Path | str):
         def do_GET(self) -> None:  # noqa: N802 (http.server API)
             if self.path.rstrip("/") in ("", "/index.html"):
                 with UsageStore(db_path) as store:
-                    body = render_html(store).encode("utf-8")
+                    body = render_html(store, project=project).encode("utf-8")
                 self._send(body, "text/html; charset=utf-8")
             elif self.path.rstrip("/") == "/api/summary":
                 with UsageStore(db_path) as store:
-                    body = json.dumps(render_json(store), default=str).encode("utf-8")
+                    body = json.dumps(render_json(store, project=project), default=str).encode("utf-8")
                 self._send(body, "application/json")
             else:
                 self.send_error(404, "Not found")
@@ -515,7 +535,12 @@ def serve(
     db_path: Path | str = DEFAULT_DB_PATH,
     host: str = "127.0.0.1",
     port: int = 8765,
+    project: str | None = None,
 ) -> ThreadingHTTPServer:
-    """Build and return a server bound to localhost. Caller runs serve_forever()."""
-    handler = _make_handler(db_path)
+    """Build and return a server bound to localhost. Caller runs serve_forever().
+
+    ``project`` scopes every served page/JSON to one project path (``None`` =
+    machine-wide).
+    """
+    handler = _make_handler(db_path, project)
     return ThreadingHTTPServer((host, port), handler)

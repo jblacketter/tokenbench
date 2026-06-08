@@ -27,6 +27,17 @@ def _add_common(p: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_project(p: argparse.ArgumentParser) -> None:
+    p.add_argument(
+        "--project",
+        nargs="?",
+        const=".",
+        default=None,
+        metavar="PATH",
+        help="Scope to one project path (bare flag = current dir; omit for machine-wide)",
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="tokenbench", description=__doc__)
     parser.add_argument("--version", action="version", version=f"tokenbench {__version__}")
@@ -40,6 +51,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_serve = sub.add_parser("serve", help="Serve the localhost dashboard")
     _add_common(p_serve)
+    _add_project(p_serve)
     p_serve.add_argument("--host", default="127.0.0.1")
     p_serve.add_argument("--port", type=int, default=8765)
     p_serve.add_argument("--no-ingest", action="store_true", help="Skip ingestion before serving")
@@ -47,11 +59,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_status = sub.add_parser("status", help="Summarize the current store")
     _add_common(p_status)
+    _add_project(p_status)
 
     p_limits = sub.add_parser(
         "limits", help="Show current rate-limit proximity and recent burn rate"
     )
     _add_common(p_limits)
+    _add_project(p_limits)
 
     p_patterns = sub.add_parser(
         "patterns", help="Run the token-efficiency pattern measurements (offline)"
@@ -102,8 +116,14 @@ def cmd_serve(args) -> int:
         print(format_report(result))
         print()
 
-    httpd = serve(db_path=args.db, host=args.host, port=args.port)
+    httpd = serve(db_path=args.db, host=args.host, port=args.port, project=args.project)
     url = f"http://{args.host}:{args.port}/"
+    if args.project is not None:
+        from .scope import normalize_project_path
+
+        print(f"Scoped to project: {normalize_project_path(args.project)}")
+    else:
+        print("Scope: machine-wide (all projects)")
     print(f"TokenBench dashboard serving at {url}  (Ctrl-C to stop)")
     if args.open:
         try:
@@ -123,9 +143,16 @@ def cmd_status(args) -> int:
     with UsageStore(args.db) as store:
         from .analytics import Analytics
 
-        s = Analytics(store).summary()
+        analytics = Analytics(store, project=args.project)
+        s = analytics.summary()
+        scope = analytics.scope_info()
+    scope_str = (
+        f"project={scope['project']} ({scope['token_share']}% of machine tokens)"
+        if scope["scoped"]
+        else "scope=machine-wide"
+    )
     print(
-        f"store={args.db} events={s.event_count} sessions={s.session_count} "
+        f"store={args.db} {scope_str} events={s.event_count} sessions={s.session_count} "
         f"total_tokens={s.total_tokens:,} range={s.first_day or '-'}..{s.last_day or '-'}"
     )
     return 0
@@ -137,10 +164,14 @@ def cmd_limits(args) -> int:
 
     now = _now_epoch()
     with UsageStore(args.db) as store:
-        analytics = Analytics(store)
+        analytics = Analytics(store, project=args.project)
         codex = LimitAnalytics(store).current_status(now_epoch=now)
         claude = claude_budget_status(analytics, DEFAULT_CLAUDE_BUDGET, now_epoch=now)
         burn = analytics.burn_rate(now_epoch=now)
+        scope = analytics.scope_info()
+    if scope["scoped"]:
+        print(f"Scope: {scope['project']}  (Claude estimate + burn are project-scoped; "
+              "Codex limits below are account-wide)\n")
 
     def _countdown(sec):
         if not sec:

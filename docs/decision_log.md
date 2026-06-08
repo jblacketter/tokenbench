@@ -6,6 +6,41 @@ This log tracks important decisions made during the project.
 
 ---
 
+## 2026-06-08: Project scoping is a read-side filter, not a storage re-key
+
+**Decision:** Implement the per-project dashboard (Phase 7) as a read-side filter on
+the existing `project_path` column — `Analytics(store, project=…)` filters its rows
+once and every aggregate scopes for free — rather than re-keying storage, keeping a
+per-project database, or changing ingestion.
+
+**Context:** Every stored event already carries a `project_path` (Claude decodes it
+from its encoded `~/.claude/projects` dir; Codex reads the session `cwd`). The machine
+ingests all logs once; a per-project view is purely a question over that same data.
+
+**Alternatives Considered:**
+- Per-project SQLite DBs: duplicates data, complicates ingestion, and breaks the
+  "ingest once, view many ways" model.
+- Re-keying storage by project: a write-path change for a read-side concern.
+- Filtering at the SQL layer: less flexible than filtering the already-loaded rows,
+  and the analytics layer is the single choke point all aggregates already pass through.
+
+**Rationale:** A single filter in `Analytics.__init__` scopes summary, splits,
+breakdowns, spikes, trend, heatmap, receipts, drivers, equivalents, and feedback
+uniformly, with zero behavior change when the filter is absent. Match semantics are
+exact-or-true-subdirectory so a sibling sharing a name prefix (`/a/foo-bar` vs
+`/a/foo`) is never captured.
+
+**Account-wide caveat:** Codex `rate_limits` are an *account* signal, not per-project,
+so the Limits panel stays account-wide and is labeled as such even when scoped —
+filtering it would misrepresent it. The API-equivalent value and the Claude burn
+*estimate* do follow the scope, since those are honest per-project reads.
+
+**Decided By:** Claude (lead), approved by Codex (reviewer)
+
+**Phase:** Phase 7
+
+---
+
 ## 2026-06-08: Burn drivers classified from project paths, not prompts
 
 **Decision:** Implement a "burn drivers" view that groups token usage into work

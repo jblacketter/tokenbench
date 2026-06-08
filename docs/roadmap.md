@@ -93,16 +93,25 @@ library, and a standardized benchmark suite. Privacy-first and dependency-free.
   - `work_families`, `labeled_spikes`, `trend_smoothed` analytics; JSON API exposes
     them; a privacy test asserts classification never surfaces content
 
-### Phase 7: Project-Scoped, Pip-Installable Dashboard (Goal)
-- **Status:** Not Started — future goal
+### Phase 7: Project-Scoped, Pip-Installable Dashboard
+- **Status:** Implemented (MVP) — see `docs/phases/project-scoped-dashboard.md`
 - **Description:** Install tokenbench as a dependency in another project and track
   token usage **scoped to that project** (a per-project dashboard), instead of the
   machine-wide view.
-- **Feasibility:** Feasible. The package already ships a console script via
-  `pyproject.toml`. Scoping mainly needs a `--project <path>` / cwd filter on
-  discovery (Claude: match the encoded project dir to the path; Codex: filter by
-  session `cwd`) plus an analytics filter; the storage and rendering layers are
-  already path-aware.
+- **Delivered (MVP):**
+  - `tokenbench/scope.py` — documented, deterministic project-path normalize + match
+    (exact or true-subdirectory; siblings sharing a name prefix do **not** match)
+  - `Analytics(store, project=…)` filters rows once so **every** aggregate scopes for
+    free; `scope_info()` reports the project's share of machine totals
+  - `--project [PATH]` on `serve` / `status` / `limits` (bare flag = current dir;
+    omit for machine-wide — the unchanged default)
+  - Dashboard scope banner + JSON `scope` block; the API-equivalent value and the
+    Claude burn estimate follow the scope, while **Codex rate limits stay account-wide**
+    (filtering them would misrepresent an account-level signal)
+  - Read-side only: no schema, storage, ingestion, or re-ingest change
+- **Future:**
+  - Per-project persisted config / a `tokenbench init` scaffold in the host repo
+  - Git-root (vs cwd) project detection
 
 ## Core Principles
 

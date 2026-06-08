@@ -28,12 +28,21 @@ python -m tokenbench ingest
 # Ingest (unless --no-ingest) and serve the dashboard at http://127.0.0.1:8765/
 python -m tokenbench serve --open
 
-# One-line summary of the current store:
+# Per-project dashboard: scope every view to one project. A bare --project means the
+# current directory, so `pip install tokenbench` into a repo and run this from it:
+cd ~/projects/my-app && python -m tokenbench serve --project
+python -m tokenbench serve --project ~/projects/my-app   # or name the path explicitly
+
+# One-line summary of the current store (also accepts --project):
 python -m tokenbench status
 
 # Limit proximity (Codex windows from logs) + recent burn rate:
 python -m tokenbench limits
 ```
+
+Scoping is a read-side filter on the project path each event already carries (Claude's
+encoded project dir; Codex's session `cwd`); machine-wide is the default. Codex rate
+limits are account-wide, so the **Limits** panel stays account-wide even when scoped.
 
 The dashboard shows total tokens by day, provider/model split, project & session
 breakdowns, recent spikes, a 30-day trend, a **Limits** panel, a **per-provider
@@ -140,6 +149,6 @@ Run the tests with `pytest`. See `docs/roadmap.md` for the full plan and
 | 4 | Actionable insights (limits, richer feedback) | Implemented (MVP) |
 | 5 | Richer views (heatmap, receipts, scale equivalents) | Implemented (MVP) |
 | 6 | Usage drivers (path-based work families, trend refinement) | Implemented (MVP) |
-| 7 | Project-scoped, pip-installable dashboard | Goal |
+| 7 | Project-scoped, pip-installable dashboard | Implemented (MVP) |
 
 See `docs/roadmap.md` for details.

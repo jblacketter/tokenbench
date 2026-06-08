@@ -59,10 +59,44 @@ class Summary:
 
 
 class Analytics:
-    """Computes dashboard aggregates from rows in a UsageStore."""
+    """Computes dashboard aggregates from rows in a UsageStore.
 
-    def __init__(self, store):
-        self.rows = [dict(r) for r in store.all_events()]
+    ``project`` (optional) scopes every aggregate to one project: only events whose
+    ``project_path`` is that path or a subdirectory of it are considered. When it is
+    ``None`` (the default) the view is machine-wide — byte-for-byte the prior
+    behavior. Scoping is a pure read-side filter; storage and ingestion are untouched.
+    """
+
+    def __init__(self, store, project: Optional[str] = None):
+        from .scope import normalize_project_path, event_in_project
+
+        all_rows = [dict(r) for r in store.all_events()]
+        self.project_scope = normalize_project_path(project)
+        if self.project_scope:
+            self.rows = [
+                r
+                for r in all_rows
+                if event_in_project(r.get("project_path"), self.project_scope)
+            ]
+        else:
+            self.rows = all_rows
+        # Machine-wide totals are retained so a scoped view can report its share.
+        self._machine_total_tokens = sum(r["total_tokens"] for r in all_rows)
+        self._machine_event_count = len(all_rows)
+
+    def scope_info(self) -> dict[str, Any]:
+        """Describe the active scope and, when scoped, its share of machine totals."""
+        scoped_tokens = sum(r["total_tokens"] for r in self.rows)
+        machine = self._machine_total_tokens
+        return {
+            "project": self.project_scope,
+            "scoped": self.project_scope is not None,
+            "scoped_tokens": scoped_tokens,
+            "scoped_events": len(self.rows),
+            "machine_tokens": machine,
+            "machine_events": self._machine_event_count,
+            "token_share": round(100.0 * scoped_tokens / machine, 1) if machine else 0.0,
+        }
 
     # -- core summaries -----------------------------------------------------
 
