@@ -18,6 +18,25 @@ localhost dashboard with token-efficiency feedback.
 It is **standard-library only** (no third-party dependencies) and **never sends
 anything off your machine**.
 
+### Install
+
+TokenBench is **not on PyPI** — `pip install tokenbench` will not work. It's
+standard-library only, so you have two options after cloning the repo:
+
+```bash
+git clone https://github.com/jblacketter/tokenbench
+cd tokenbench
+
+# Option A — no install, run in place (everything below uses this form):
+python -m tokenbench serve --open
+
+# Option B — put a `tokenbench` command on your PATH so you can run it from anywhere:
+pipx install .                 # isolated; or `pip install -e .` in a virtualenv
+tokenbench serve --open        # then `python -m tokenbench` ↔ `tokenbench` are interchangeable
+```
+
+### Usage
+
 ```bash
 # See what would be ingested (no writes) — works even if a provider isn't installed:
 python -m tokenbench ingest --dry-run
@@ -28,11 +47,6 @@ python -m tokenbench ingest
 # Ingest (unless --no-ingest) and serve the dashboard at http://127.0.0.1:8765/
 python -m tokenbench serve --open
 
-# Per-project dashboard: scope every view to one project. A bare --project means the
-# current directory, so `pip install tokenbench` into a repo and run this from it:
-cd ~/projects/my-app && python -m tokenbench serve --project
-python -m tokenbench serve --project ~/projects/my-app   # or name the path explicitly
-
 # One-line summary of the current store (also accepts --project):
 python -m tokenbench status
 
@@ -40,9 +54,21 @@ python -m tokenbench status
 python -m tokenbench limits
 ```
 
+### Per-project view
+
+TokenBench always reads your machine-wide logs from `~/.claude` and `~/.codex`, so
+you **do not install it into each project**. To see just one project, point
+`--project` at that repo's path — from anywhere:
+
+```bash
+python -m tokenbench serve --project ~/projects/my-app   # name the path explicitly
+cd ~/projects/my-app && python -m tokenbench serve --project   # bare flag = current dir
+```
+
 Scoping is a read-side filter on the project path each event already carries (Claude's
-encoded project dir; Codex's session `cwd`); machine-wide is the default. Codex rate
-limits are account-wide, so the **Limits** panel stays account-wide even when scoped.
+encoded project dir; Codex's session `cwd`); omit `--project` for the machine-wide
+default. Codex rate limits are account-wide, so the **Limits** panel stays
+account-wide even when scoped.
 
 The dashboard shows total tokens by day, provider/model split, project & session
 breakdowns, recent spikes, a 30-day trend, a **Limits** panel, a **per-provider
