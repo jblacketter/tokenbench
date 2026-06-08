@@ -21,3 +21,6 @@ Thumbs.db
 # Local usage store (contains the user's own usage metadata)
 data/*.sqlite3
 data/*.sqlite3-journal
+
+# Throwaway reference material (screenshots, scraped notes, etc.)
+docs/reference/
