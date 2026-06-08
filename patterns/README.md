@@ -21,8 +21,8 @@ Each pattern doc follows the same template:
 - **Related patterns.**
 
 Measurements are either **measured** (real captured production data, e.g. the
-MCP-vs-CLI case study) or **estimated** (the ~4-chars/token proxy applied to real
-fixture payloads, offline and deterministic). Each table says which.
+browser-automation measurement) or **estimated** (the ~4-chars/token proxy applied to
+real fixture payloads, offline and deterministic). Each table says which.
 
 ## Reproduce the numbers
 
@@ -37,7 +37,7 @@ python -m tokenbench patterns --family Query
 | Family | Pattern | Anchor |
 |--------|---------|--------|
 | Data Delivery | [Filtered Response](data-delivery/filtered-response.md) | shape the payload to the question |
-| Query | [Reference + Fetch](query/reference-fetch.md) | MCP-vs-CLI snapshot-to-file case study (real data) |
+| Query | [Reference + Fetch](query/reference-fetch.md) | browser-automation snapshot-to-file measurement (real data) |
 | Agent Loop | [Snapshot Budget](agent-loop/snapshot-budget.md) | bound the snapshots carried across a loop |
 
 More patterns named in the roadmap (Inline All, Progressive Disclosure, Targeted

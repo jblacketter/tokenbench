@@ -8,7 +8,7 @@ This project collects real-world measurements, patterns, and anti-patterns for m
 
 Token usage directly maps to cost, latency, and context window pressure. A 3x difference in token overhead per tool call becomes a 30x difference across a 10-step workflow. As AI agents get more autonomous (more tool calls, longer chains), token efficiency becomes a first-class engineering concern.
 
-## The Dashboard (Phase 2 MVP)
+## The Dashboard (Phase 1)
 
 TokenBench now ships a **local-first usage dashboard** for Claude Code and Codex CLI
 subscription accounts. It reads usage from your machine's own logs, normalizes it
@@ -64,17 +64,11 @@ both queried rows and the raw database bytes.
 - Project attribution falls back to `unknown` when a log doesn't record a working
   directory.
 
-## Research content (Phase 1)
-
-**Article/Video: "Your AI Agent Is Burning 3x More Tokens Than It Needs To"**
-
-Real measurements from a production QA workflow showing how the same browser automation task consumes 2.5x–3.8x more tokens via MCP Server vs a CLI approach. Generalizes to broader patterns for any AI application making tool calls. This research is preserved under `content/`, `examples/`, and `scripts/`.
-
 ## Project Structure
 
 ```
 tokenbench/
-  tokenbench/               # The dashboard package (Phase 2 MVP)
+  tokenbench/               # The product package
     schema.py               # Common usage_event schema + persisted-field whitelist
     sources.py              # Local log discovery (Claude + Codex)
     parsers.py              # Provider parsers (per-message vs cumulative-delta)
@@ -83,22 +77,26 @@ tokenbench/
     analytics.py            # Daily/provider/model/project/session/spike/trend aggregates
     feedback.py             # Token-efficiency feedback cards
     dashboard.py            # Self-contained localhost web dashboard
-    cli.py                  # `tokenbench` CLI (ingest / serve / status)
-  tests/                    # Parser, privacy regression, and analytics tests
+    cli.py                  # `tokenbench` CLI (ingest / serve / status / patterns / bench)
+    patterns/               # Phase 2 — measurement harness + scenario registry
+    bench/                  # Phase 3 — benchmark cases + runner
+  patterns/                 # Phase 2 — pattern docs (measurement tables generated)
+  benchmarks/               # Phase 3 — README + committed results.json
+  tests/                    # Parser, privacy, analytics, patterns, and bench tests
   docs/
     roadmap.md              # Project roadmap
     decision_log.md         # Architecture and approach decisions
     phases/                 # Per-phase plans
-  examples/mcp-vs-cli/      # Raw measurements from the Northstar QA experiment (research)
-  scripts/                  # MCP vs CLI demo scripts (research)
   data/                     # Local SQLite store (gitignored)
-  templates/                # ai-handoff templates
+  templates/                # handoff-workflow templates
 ```
 
 ## Quick Start
 
 ```bash
 python -m tokenbench serve --open   # ingest local usage + open the dashboard
+python -m tokenbench patterns        # measured token-efficiency patterns
+python -m tokenbench bench            # standardized benchmark suite
 ```
 
 Run the tests with `pytest`. See `docs/roadmap.md` for the full plan and
@@ -116,9 +114,8 @@ Run the tests with `pytest`. See `docs/roadmap.md` for the full plan and
 
 | Phase | Focus | Status |
 |-------|-------|--------|
-| 1 | MCP vs CLI case study (article + video) | In Progress |
-| 2 | Standalone local token dashboard MVP | Implemented (MVP) |
-| 3 | Pattern library (data delivery, query, agent loop patterns) | Not Started |
-| 4 | Standardized benchmarks | Not Started |
+| 1 | Standalone local token dashboard MVP | Implemented (MVP) |
+| 2 | Pattern library (data delivery, query, agent loop patterns) | Implemented (MVP) |
+| 3 | Standardized benchmarks | Implemented (MVP) |
 
 See `docs/roadmap.md` for details.

@@ -49,19 +49,19 @@
     {
       "approaches": [
         {
-          "label": "MCP Server (inline snapshots)",
+          "label": "Inline tool snapshots",
           "source": "measured",
           "tokens": 3075
         },
         {
-          "label": "playwright-cli (snapshot\u2192file)",
+          "label": "Snapshot \u2192 file reference",
           "source": "measured",
           "tokens": 800
         }
       ],
-      "baseline_label": "MCP Server (inline snapshots)",
+      "baseline_label": "Inline tool snapshots",
       "baseline_tokens": 3075,
-      "best_label": "playwright-cli (snapshot\u2192file)",
+      "best_label": "Snapshot \u2192 file reference",
       "best_tokens": 800,
       "category": "Browser Automation",
       "ratio_vs_baseline": 3.84,

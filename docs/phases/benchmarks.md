@@ -76,7 +76,7 @@ Likely new or changed:
 
 Reused:
 - `tokenbench/patterns/` scenario registry (shared measurement source)
-- `examples/mcp-vs-cli/comparison-data.md` (real browser-automation numbers)
+- The captured browser-automation measurement numbers (via the pattern registry)
 
 ## Success Criteria
 

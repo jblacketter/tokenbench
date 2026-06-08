@@ -4,7 +4,7 @@
 
 Build the first real TokenBench product surface: a local-first dashboard that reads Claude Code and Codex CLI subscription usage from local machine logs, normalizes token events, and gives practical feedback for becoming more token-efficient.
 
-This phase preserves the existing MCP-vs-CLI article work as research content, but pivots active development toward a standalone dashboard. Future phases can add project-embedded API-token dashboards.
+This phase pivots active development toward a standalone dashboard. Future phases can add project-embedded API-token dashboards.
 
 ## Scope
 
@@ -26,7 +26,7 @@ Out of scope:
 
 ## Technical Approach
 
-1. Keep the existing article assets under `content/`, `examples/`, and `scripts/` as research material.
+1. Focus the repo on the standalone dashboard product (earlier browser-automation research content has since moved to a separate project).
 2. Treat this MVP as the successor to the old Phase 2 "Token Measurement Toolkit." The original toolkit idea is subsumed by a concrete product: local usage ingestion plus a dashboard and feedback loop.
 3. Add a real application structure around ingestion, storage, analysis, and dashboard rendering.
 4. Use Python, SQLite, and a lightweight local web dashboard for the MVP. The launch path should be a local command that scans usage logs, stores normalized metadata, and serves a localhost dashboard. This fits the current repo better than introducing a separate frontend stack before the parser and privacy model are proven.
@@ -119,18 +119,15 @@ Likely new or changed files:
 - Python package files for ingestion, storage, analytics, and local web dashboard serving
 - tests for parser fixtures and analytics rules
 
-Existing research files to preserve:
-- `content/article.md`
-- `content/video-script.md`
-- `examples/mcp-vs-cli/comparison-data.md`
-- `scripts/mcp-demo.py`
-- `scripts/cli-demo.py`
+> Historical note: the browser-automation research and demo content referenced in the
+> original plan was later split out into a separate project. tokenbench retains only
+> the derived measurement numbers used by the pattern library and benchmarks.
 
 ## Success Criteria
 
-- The repo clearly distinguishes article/research content from the new dashboard product direction.
+- The repo presents a clear standalone dashboard product direction.
 - `docs/roadmap.md` states that the standalone dashboard MVP replaces/subsumes the previous Phase 2 toolkit direction.
-- `docs/decision_log.md` records the pivot from article/toolkit research into a standalone local dashboard.
+- `docs/decision_log.md` records the pivot into a standalone local dashboard.
 - A local ingestion command can discover and parse available Claude Code and Codex usage logs, or report clearly when they are absent.
 - A dry-run mode reports discovered paths, provider availability, session counts, and date ranges without writing to SQLite.
 - Parsed usage is normalized into one local schema.

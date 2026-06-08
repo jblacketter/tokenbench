@@ -23,9 +23,9 @@ Have the tool **write the large artifact to a file and return only a reference**
 (a path + a one-line summary). The agent pulls the full tree into context **on
 demand**, only when it actually needs to resolve a ref or inspect structure.
 
-This is the core finding of the project's MCP-vs-CLI case study: same task, same
-output (24 `data-testid` attributes), but the CLI snapshots-to-file approach spends a
-fraction of the tokens because the giant trees stay out of context until asked for.
+This is the core finding of a captured browser-automation measurement: same task,
+same output, but the snapshot-to-file approach spends a fraction of the tokens
+because the giant trees stay out of context until asked for.
 
 ## When to use
 
@@ -43,8 +43,8 @@ fraction of the tokens because the giant trees stay out of context until asked f
 <!-- BEGIN GENERATED: reference-fetch -->
 | Approach | Tokens |
 | --- | ---: |
-| MCP Server (inline snapshots) (baseline) | 3,075 |
-| playwright-cli (snapshot→file) (efficient) | 800 |
+| Inline tool snapshots (baseline) | 3,075 |
+| Snapshot → file reference (efficient) | 800 |
 | **Saved** | **2,275 (74.0%)** |
 | **Ratio** | **3.84×** |
 
@@ -62,7 +62,3 @@ _Source: real captured measurement._
 
 - **Filtered Response** — when you can shape the payload instead of referencing it.
 - **Snapshot Budget** — bound how many fetched snapshots you keep around in a loop.
-
-## Source
-
-`examples/mcp-vs-cli/comparison-data.md` (Northstar QA, 2026-02-10).

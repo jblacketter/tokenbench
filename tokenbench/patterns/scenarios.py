@@ -4,9 +4,10 @@ Three families are represented, each with one anchor scenario:
 
 - **Data Delivery / Filtered Response** — return only the fields the caller needs
   instead of the whole record. Measured from real fixture payloads.
-- **Query / Reference + Fetch** — the production MCP-vs-CLI case study, where the CLI
-  writes snapshots to files and returns a path, so the agent pulls full trees into
-  context only on demand. Anchored in real captured token counts.
+- **Query / Reference + Fetch** — a captured browser-automation measurement where one
+  approach inlines a full snapshot per tool call and the other writes the snapshot to
+  a file and returns a path, so the agent pulls the full tree into context only on
+  demand. Anchored in real captured token counts.
 - **Agent Loop / Snapshot Budget** — across a multi-step loop, keep a bounded set of
   recent full snapshots and replace older ones with a one-line reference, instead of
   re-inlining every snapshot every step.
@@ -49,18 +50,18 @@ def _data_delivery_scenario() -> Scenario:
 
 
 def _query_scenario() -> Scenario:
-    # Real captured totals from examples/mcp-vs-cli/comparison-data.md (2026-02-10).
+    # Real captured totals from a browser-automation measurement: same task, same
+    # output, two tool-output delivery styles (inline snapshots vs snapshot-to-file).
     return Scenario(
         key="reference-fetch",
         family="Query",
         pattern="Reference + Fetch",
         title="Write large snapshots to files and return a path; pull into context "
-        "only when needed (MCP-vs-CLI case study).",
-        baseline=Variant("MCP Server (inline snapshots)", tokens=3075, source="measured"),
-        efficient=Variant("playwright-cli (snapshot→file)", tokens=800, source="measured"),
-        note="Identical task and identical output (24 data-testid attributes). All "
-        "of the difference is snapshot inlining on the output side. See "
-        "examples/mcp-vs-cli/comparison-data.md.",
+        "only when needed.",
+        baseline=Variant("Inline tool snapshots", tokens=3075, source="measured"),
+        efficient=Variant("Snapshot → file reference", tokens=800, source="measured"),
+        note="Identical task and identical output (24 elements found). All of the "
+        "difference is snapshot inlining on the output side.",
     )
 
 

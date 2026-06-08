@@ -8,9 +8,9 @@ backed by a reproducible measurement**, so the library follows the project's fir
 principle — *measure, don't guess* — rather than offering untested advice.
 
 Patterns are grouped into three families from the roadmap: **Data Delivery**,
-**Query**, and **Agent Loop**. The existing MCP-vs-CLI case study
-(`examples/mcp-vs-cli/`) becomes the first fully-measured entry, so this phase
-builds directly on work already captured.
+**Query**, and **Agent Loop**. A captured browser-automation measurement (inline snapshots vs snapshot-to-file)
+becomes the first fully-measured entry, so this phase builds directly on numbers
+already captured.
 
 ## Scope
 
@@ -33,7 +33,7 @@ Out of scope:
 - Live model/API calls. Measurements use captured fixtures and the established
   character-proxy estimator so they are deterministic and run offline.
 - The full standardized benchmark suite / published results (that is Phase 4).
-- Rewriting the Phase 1 article or changing the dashboard MVP.
+- Changing the dashboard MVP.
 
 ## Technical Approach
 
@@ -83,7 +83,7 @@ Likely new or changed:
 - `docs/decision_log.md` (pattern-library approach entry)
 
 Existing assets reused:
-- `examples/mcp-vs-cli/comparison-data.md` (real Query-family measurement)
+- The captured browser-automation Query-family measurement (numbers retained in `tokenbench/patterns/scenarios.py`)
 
 ## Success Criteria
 

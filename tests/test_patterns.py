@@ -43,7 +43,7 @@ def test_measurements_are_deterministic():
 def test_query_scenario_uses_real_captured_numbers():
     q = get_scenario("reference-fetch")
     m = q.measure()
-    # From examples/mcp-vs-cli/comparison-data.md.
+    # Real captured browser-automation measurement (inline vs snapshot-to-file).
     assert m["baseline_tokens"] == 3075
     assert m["efficient_tokens"] == 800
     assert m["source"] == "measured"

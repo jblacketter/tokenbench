@@ -67,7 +67,7 @@ measurement block into each doc between `<!-- BEGIN/END GENERATED -->` markers, 
 `docgen.check_all()` (asserted in `tests/test_patterns.py`) fails CI if any doc
 drifts. Token counts use the established ~4-chars/token proxy (see 2026-02-10) for
 fixture-based scenarios, with explicit real overrides for captured data (the
-MCP-vs-CLI Query case study). Everything is offline, deterministic, and
+browser-automation Query measurement). Everything is offline, deterministic, and
 dependency-free, matching the dashboard MVP's posture.
 
 **Decided By:** Human + Codex + Claude review
@@ -77,7 +77,7 @@ dependency-free, matching the dashboard MVP's posture.
 **Follow-ups:**
 - Add the remaining named patterns (Progressive Disclosure, Targeted Eval, Context
   Pruning, etc.) using the same measured template.
-- Feed Phase 4 (Benchmarks) from the same scenario registry so benchmarks and the
+- Feed Phase 3 (Benchmarks) from the same scenario registry so benchmarks and the
   pattern library share one measurement source.
 
 ---
@@ -86,7 +86,7 @@ dependency-free, matching the dashboard MVP's posture.
 
 **Decision:** Replace the broad Phase 2 "Token Measurement Toolkit" with a standalone local dashboard MVP for Claude Code and Codex CLI subscription usage.
 
-**Context:** The project began as an article/video case study about MCP vs CLI token overhead. That research remains useful, but continued development should produce a practical tool: a visual dashboard that helps the user understand Claude and Codex token usage and improve AI work habits. Public references such as Nate Jones' token-burn dashboard reinforce that token counts are most useful as behavioral traces tied to outcomes, not as leaderboards or raw cost charts.
+**Context:** The project began as a browser-automation investigation into how tool-output delivery (inline snapshots vs reference-and-fetch) affects token cost. That research remains useful, but continued development should produce a practical tool: a visual dashboard that helps the user understand Claude and Codex token usage and improve AI work habits. Public references such as Nate Jones' token-burn dashboard reinforce that token counts are most useful as behavioral traces tied to outcomes, not as leaderboards or raw cost charts.
 
 **Alternatives Considered:**
 - Continue with a generic toolkit: Useful for future benchmarks, but too abstract for the user's current need.
@@ -102,33 +102,11 @@ dependency-free, matching the dashboard MVP's posture.
 **Follow-ups:**
 - Implement provider-specific parser rules for Claude per-message usage and Codex cumulative usage. *(Done — see `tokenbench/parsers.py`.)*
 - Add privacy regression tests that verify prompt/response/code text is not stored. *(Done — see `tests/test_privacy.py`, which scans both queried rows and raw DB bytes for deliberately-planted secrets.)*
-- Keep the article assets as research content rather than the primary product roadmap.
+- The earlier browser-automation research and demo content has since been split out
+  into a separate project; tokenbench retains only the derived measurement numbers
+  used by the pattern library and benchmarks.
 
 **Implementation note (2026-06-07):** The reviewer's discovery-spike sample for Codex was slightly idealized. On the real machine, `total_token_usage` is nested under `payload.info.total_token_usage` in `token_count` event rows, and `session_id`/`cwd`/`model` come from a `session_meta` header record rather than per row. The plan's deferred "where does Codex record cwd?" question resolved to `session_meta.payload.cwd` (with an `unknown` fallback retained). Parser and fixtures were updated to mirror the real on-disk shape; a full local ingest produced 67k+ events across both providers with no secrets reaching SQLite.
-
----
-
-## 2026-02-10: Start with Browser Automation Case Study
-
-**Decision:** Use the MCP Server vs playwright-cli comparison as the first case study and article topic.
-
-**Context:** Needed a concrete, measurable example to anchor the project. The Northstar QA project provided real-world data from testing both approaches on the same task.
-
-**Alternatives Considered:**
-- RAG chunking comparison: Good topic but requires more setup to produce reproducible measurements
-- API response shaping: Too abstract without a concrete app to test against
-- General "token efficiency tips" article: Too broad, lacks the punch of real numbers
-
-**Rationale:** Browser automation is relatable (many developers use Playwright/Selenium), MCP is timely (growing adoption), and we already have real measurements (3,075 vs 800 tokens). The specific-to-general arc makes for compelling content.
-
-**Decided By:** Human + Claude (collaborative)
-
-**Phase:** Phase 1
-
-**Follow-ups:**
-- Capture raw data in `examples/mcp-vs-cli/`
-- Write article outline
-- Build reproducible demo scripts
 
 ---
 
@@ -143,7 +121,7 @@ dependency-free, matching the dashboard MVP's posture.
 - Word-based estimates (~1.3 tokens/word): Less accurate for code-heavy output
 - Character-based (~4 chars/token): Good balance of accuracy and simplicity
 
-**Rationale:** Industry-standard approximation. Close enough for comparison purposes (we care about ratios, not exact counts). Can upgrade to exact counts in Phase 2 toolkit.
+**Rationale:** Industry-standard approximation. Close enough for comparison purposes (we care about ratios, not exact counts). Can upgrade to an exact tokenizer later. Still in use by the pattern library and benchmark harness.
 
 **Decided By:** Claude (technical recommendation)
 
