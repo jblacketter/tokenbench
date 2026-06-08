@@ -36,7 +36,9 @@ python -m tokenbench limits
 ```
 
 The dashboard shows total tokens by day, provider/model split, project & session
-breakdowns, recent spikes, a 30-day trend, a **Limits** panel, and feedback cards
+breakdowns, recent spikes, a 30-day trend, a **Limits** panel, a **per-provider
+receipts table** (Today / 7d / 30d / peak / active days / sparkline), a **calendar
+burn heatmap** (log scale), **scale equivalents** (Fermi estimates), and feedback cards
 that turn usage patterns into behavioral nudges (spike detection, cache-utilization
 hints, hidden reasoning budget, project hotspots, heavy single-thread warnings,
 limit-proximity warnings, burn rate, and model-mix concentration).
@@ -92,6 +94,7 @@ tokenbench/
     analytics.py            # Daily/provider/model/project/session/spike/trend aggregates
     feedback.py             # Token-efficiency feedback cards
     limits.py               # Configurable Claude budgets + offline pricing table
+    equivalents.py          # Fermi "scale equivalents" from total token burn
     dashboard.py            # Self-contained localhost web dashboard
     cli.py                  # CLI (ingest / serve / status / limits / patterns / bench)
     patterns/               # Phase 2 — measurement harness + scenario registry
@@ -133,5 +136,9 @@ Run the tests with `pytest`. See `docs/roadmap.md` for the full plan and
 | 1 | Standalone local token dashboard MVP | Implemented (MVP) |
 | 2 | Pattern library (data delivery, query, agent loop patterns) | Implemented (MVP) |
 | 3 | Standardized benchmarks | Implemented (MVP) |
+| 4 | Actionable insights (limits, richer feedback) | Implemented (MVP) |
+| 5 | Richer views (heatmap, receipts, scale equivalents) | Implemented (MVP) |
+| 6 | Usage drivers (path-based work families, trend refinement) | In Progress |
+| 7 | Project-scoped, pip-installable dashboard | Goal |
 
 See `docs/roadmap.md` for details.

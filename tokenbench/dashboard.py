@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from .analytics import Analytics, LimitAnalytics, claude_budget_status, _now_epoch
+from .equivalents import CAVEAT, as_dicts as equivalents_as_dicts
 from .feedback import build_feedback
 from .limits import DEFAULT_CLAUDE_BUDGET, api_equivalent_usd
 from .storage import UsageStore, DEFAULT_DB_PATH
@@ -194,6 +195,97 @@ def _limits_section(codex_status: list[dict], claude_status: list[dict]) -> str:
     return "".join(blocks)
 
 
+_HEAT_COLORS = ["#161922", "#23314f", "#2f4a86", "#3f63c0", "#5a7ff0", "#86a6ff"]  # level 0..5
+
+
+def _sparkline_svg(values: list[int]) -> str:
+    if not values or max(values) == 0:
+        return '<span class="muted small">—</span>'
+    w, h = 120, 24
+    vmax = max(values) or 1
+    n = len(values)
+    step = w / max(n - 1, 1)
+    pts = " ".join(
+        f"{i * step:.1f},{h - (h - 2) * (v / vmax):.1f}" for i, v in enumerate(values)
+    )
+    return (
+        f'<svg viewBox="0 0 {w} {h}" class="spark" preserveAspectRatio="none">'
+        f'<polyline points="{pts}" fill="none" stroke="#4f7cff" stroke-width="1.5"/></svg>'
+    )
+
+
+def _heatmap_svg(hm: dict) -> str:
+    days = hm.get("days") or []
+    if not days:
+        return '<p class="empty">Not enough data for a heatmap yet.</p>'
+    weeks = hm["weeks"]
+    cell, gap, pad = 12, 3, 2
+    width = pad * 2 + weeks * (cell + gap)
+    height = pad * 2 + 7 * (cell + gap)
+    rects = []
+    for c in days:
+        x = pad + c["week"] * (cell + gap)
+        y = pad + c["weekday"] * (cell + gap)
+        color = _HEAT_COLORS[min(c["level"], len(_HEAT_COLORS) - 1)]
+        title = f'{c["day"]}: {c["tokens"]:,} tokens'
+        rects.append(
+            f'<rect x="{x}" y="{y}" width="{cell}" height="{cell}" rx="2" fill="{color}">'
+            f"<title>{html.escape(title)}</title></rect>"
+        )
+    legend = "".join(
+        f'<rect x="{i * 16}" y="0" width="12" height="12" rx="2" fill="{c}"/>'
+        for i, c in enumerate(_HEAT_COLORS)
+    )
+    lw = len(_HEAT_COLORS) * 16
+    return (
+        f'<div class="heat-scroll"><svg viewBox="0 0 {width} {height}" width="{width}" '
+        f'height="{height}" class="heatmap">{"".join(rects)}</svg></div>'
+        f'<div class="heat-legend"><span class="muted small">{html.escape(hm["first"])}</span>'
+        f'<span class="muted small">less</span>'
+        f'<svg viewBox="0 0 {lw} 12" width="{lw}" height="12">{legend}</svg>'
+        f'<span class="muted small">more · log scale</span>'
+        f'<span class="muted small">{html.escape(hm["last"])}</span></div>'
+    )
+
+
+def _receipts_table(windows: list[dict]) -> str:
+    if not windows:
+        return '<p class="empty">No data yet.</p>'
+    rows = []
+    for w in windows:
+        name = "Total" if w["provider"] == "total" else str(w["provider"]).capitalize()
+        peak = w["peak_day"]
+        rows.append(
+            f"<tr><td>{html.escape(name)}</td>"
+            f"<td class='num'>{_fmt(w['today'])}</td>"
+            f"<td class='num'>{_fmt(w['last_7d'])}</td>"
+            f"<td class='num'>{_fmt(w['last_30d'])}</td>"
+            f"<td>{html.escape(peak['day'])} <span class='muted'>({_fmt(peak['tokens'])})</span></td>"
+            f"<td class='num'>{w['active_days']}</td>"
+            f"<td>{_sparkline_svg(w['sparkline'])}</td></tr>"
+        )
+    return (
+        "<table><thead><tr><th>Tool</th><th class='num'>Today</th><th class='num'>7d</th>"
+        "<th class='num'>30d</th><th>Peak day</th><th class='num'>Active days</th>"
+        "<th>30d</th></tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody></table>"
+    )
+
+
+def _equivalents_section(total_tokens: int) -> str:
+    items = equivalents_as_dicts(total_tokens)
+    if not items:
+        return '<p class="empty">No data yet.</p>'
+    cards = "".join(
+        f'<div class="equiv"><div class="equiv-measure muted small">{html.escape(e["measure"])}</div>'
+        f'<div class="equiv-est">{html.escape(e["estimate"])}</div>'
+        f'<div class="equiv-eq muted">{html.escape(e["equivalent"])}</div>'
+        f'<div class="equiv-basis muted small" title="{html.escape(e["basis"])}">{html.escape(e["basis"])}</div></div>'
+        for e in items
+    )
+    return f'<div class="equiv-grid">{cards}</div><p class="muted small">{html.escape(CAVEAT)}</p>'
+
+
 def _feedback_cards(cards) -> str:
     out = []
     for c in cards:
@@ -250,6 +342,14 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .meter-fill.warn { background: #ff9f4f; }
 .meter-fill.alert { background: #ff5f6e; }
 .meter-fill.na { background: #2a2f3a; }
+.heat-scroll { overflow-x: auto; padding-bottom: 4px; }
+.heatmap { display: block; }
+.heat-legend { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.spark { width: 120px; height: 24px; }
+.equiv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.equiv { background: #0f1115; border-radius: 8px; padding: 14px; }
+.equiv-est { font-size: 20px; font-weight: 600; margin: 2px 0; }
+.equiv-basis { margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 footer { padding: 16px 32px; color: #6b7080; font-size: 12px; }
 """
 
@@ -291,7 +391,13 @@ def render_html(store: UsageStore) -> str:
 
   <section class="wide"><h2>Limits</h2>{_limits_section(codex_limits, claude_limits)}</section>
 
+  <section class="wide"><h2>Receipts</h2>{_receipts_table(analytics.provider_windows())}</section>
+
+  <section class="wide"><h2>Daily burn heatmap</h2>{_heatmap_svg(analytics.heatmap())}</section>
+
   <section class="wide"><h2>30-day trend</h2>{_trend_svg(analytics.trend())}</section>
+
+  <section class="wide"><h2>Scale equivalents</h2>{_equivalents_section(s.total_tokens)}</section>
 
   <section><h2>Provider split</h2>{_bar_rows(analytics.provider_split(), "provider")}</section>
   <section><h2>Model split</h2>{_bar_rows(analytics.model_split(), "model")}</section>
@@ -321,6 +427,9 @@ def render_json(store: UsageStore) -> dict[str, Any]:
         "session_breakdown": analytics.session_breakdown(),
         "recent_spikes": analytics.recent_spikes(),
         "trend": analytics.trend(),
+        "provider_windows": analytics.provider_windows(),
+        "heatmap": analytics.heatmap(),
+        "scale_equivalents": equivalents_as_dicts(analytics.summary().total_tokens),
         "burn_rate": analytics.burn_rate(now_epoch=now),
         "limits": {"codex": codex_limits, "claude": claude_limits},
         "api_equivalent_usd": api_equivalent_usd([dict(r) for r in store.all_events()]),

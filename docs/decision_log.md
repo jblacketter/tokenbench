@@ -6,6 +6,44 @@ This log tracks important decisions made during the project.
 
 ---
 
+## 2026-06-08: Richer views over existing data; calendar heatmap on documented log bins
+
+**Decision:** Add a calendar burn heatmap, a per-provider receipts table, and Fermi
+"scale equivalents" as new reads over the aggregates we already store — no new data,
+no prompts, no privacy impact. The heatmap colors days by a **documented, stable
+log-scale level** (decade thresholds), and all windowed views accept a caller-supplied
+`today` anchor for determinism.
+
+**Context:** Reviewing Nate Jones' published dashboard ("one tidy table, five honest
+reads") and prior art (tokscale's contribution graph) surfaced high-value views we
+lacked. The goal was the visually-recognizable, shareable reads — without touching the
+privacy boundary or adding providers.
+
+**Alternatives Considered:**
+- Quantile/relative heatmap bins: adapt better to small datasets but aren't stable
+  over time or comparable across users; rejected in favor of fixed decade bins that
+  are documented and reproducible.
+- Wall-clock anchoring for windows: rejected for analytics/tests — windows take an
+  explicit `today` so results are deterministic (the dashboard passes the latest day).
+- A live cost/eco calculator: out of scope and dishonest at this precision; the Fermi
+  equivalents carry an explicit "scale translations, not real accounting" caveat.
+
+**Rationale:** Everything is derived from `tokens_by_day` / `daily_by_provider`, so it
+stays offline, dependency-free, and privacy-neutral. Fixed log decades make the
+heatmap legend meaningful and stable. Semantic "burn drivers" classification (Nate's
+editorial view) is deferred to the `usage-drivers` phase, where it will be done from
+**project paths** rather than prompts to preserve the privacy posture.
+
+**Decided By:** Human + Codex + Claude review
+
+**Phase:** richer-views
+
+**Follow-ups:**
+- `usage-drivers`: path-based work-family classification, spike-day driver labels, and
+  a moving-average + log-scale trend refinement.
+
+---
+
 ## 2026-06-08: Limit proximity from logs (Codex) + labeled estimate (Claude)
 
 **Decision:** Add limit-proximity awareness by ingesting Codex `rate_limits` from

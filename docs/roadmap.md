@@ -67,7 +67,26 @@ library, and a standardized benchmark suite. Privacy-first and dependency-free.
   - Informed by prior art: ccusage, tokscale, CodexBar, codex-usage-tracker (the last
     independently validates tokenbench's aggregate-only, no-prompts privacy model).
 
-### Phase 5: Project-Scoped, Pip-Installable Dashboard (Goal)
+### Phase 5: Richer Views
+- **Status:** Implemented (MVP) — see `docs/phases/richer-views.md`
+- **Description:** New "honest reads" over existing aggregate data, inspired by Nate
+  Jones' five-view framing and tokscale's contribution graph (no privacy impact).
+- **Delivered (MVP):**
+  - **Calendar burn heatmap** — per-day totals on a documented log scale (decade bins)
+  - **Per-provider receipts table** — Today / 7d / 30d / Peak day / Active days / 30-day
+    sparkline for each provider and the combined total
+  - **Scale equivalents** — Fermi translations (water, electricity, LOC/engineer-years)
+    with documented bases and the "not real accounting" caveat
+  - New analytics (`provider_windows`, `daily_by_provider`, `heatmap`) + `equivalents.py`
+
+### Phase 6: Usage Drivers
+- **Status:** Not Started
+- **Description:** A privacy-safe take on Nate's "burn drivers" view: classify token
+  burn into work families by **project path** (we never store prompts), label spike
+  days by their dominant project, and add a moving-average + log-scale refinement to
+  the trend chart.
+
+### Phase 7: Project-Scoped, Pip-Installable Dashboard (Goal)
 - **Status:** Not Started — future goal
 - **Description:** Install tokenbench as a dependency in another project and track
   token usage **scoped to that project** (a per-project dashboard), instead of the

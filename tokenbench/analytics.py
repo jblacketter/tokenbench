@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional
 
 
@@ -224,6 +224,134 @@ class Analytics:
             d = (anchor - timedelta(days=i)).isoformat()
             series.append({"day": d, "total_tokens": by_day.get(d, 0)})
         return series
+
+    # -- richer views -------------------------------------------------------
+
+    def daily_by_provider(self) -> dict[str, dict[str, int]]:
+        """Per-day tokens, keyed by provider plus a synthetic ``"total"`` series."""
+        out: dict[str, dict[str, int]] = {}
+        for r in self.rows:
+            d = _day(r["timestamp"])
+            if not d:
+                continue
+            tok = r["total_tokens"]
+            for key in (r["provider"], "total"):
+                bucket = out.setdefault(key, {})
+                bucket[d] = bucket.get(d, 0) + tok
+        return out
+
+    def provider_windows(self, today: Optional[str] = None) -> list[dict[str, Any]]:
+        """Per-provider (and total) receipts: today / 7d / 30d / peak / active / spark.
+
+        ``today`` anchors all windows; it defaults to the latest day in the data so
+        results are deterministic without wall-clock dependence (tests pass it).
+        """
+        dbp = self.daily_by_provider()
+        if not dbp:
+            return []
+        all_days = sorted({d for series in dbp.values() for d in series})
+        anchor_str = today or all_days[-1]
+        try:
+            anchor = date.fromisoformat(anchor_str)
+        except ValueError:
+            anchor = date.fromisoformat(all_days[-1])
+
+        def window_sum(series: dict[str, int], n: int) -> int:
+            start = anchor - timedelta(days=n - 1)
+            total = 0
+            for ds, t in series.items():
+                try:
+                    dd = date.fromisoformat(ds)
+                except ValueError:
+                    continue
+                if start <= dd <= anchor:
+                    total += t
+            return total
+
+        results = []
+        for provider, series in dbp.items():
+            peak_day, peak_tokens = max(series.items(), key=lambda kv: kv[1])
+            spark = [
+                series.get((anchor - timedelta(days=i)).isoformat(), 0)
+                for i in range(29, -1, -1)
+            ]
+            results.append(
+                {
+                    "provider": provider,
+                    "today": series.get(anchor.isoformat(), 0),
+                    "last_7d": window_sum(series, 7),
+                    "last_30d": window_sum(series, 30),
+                    "peak_day": {"day": peak_day, "tokens": peak_tokens},
+                    "active_days": sum(1 for t in series.values() if t > 0),
+                    "sparkline": spark,
+                }
+            )
+        # Total row first, then providers by 30-day volume.
+        results.sort(key=lambda r: (r["provider"] != "total", -r["last_30d"]))
+        return results
+
+    def heatmap(self, today: Optional[str] = None) -> dict[str, Any]:
+        """Calendar grid of per-day totals with a documented log-scale level per day.
+
+        Cells run from the Monday on/before the first day through ``today`` (default:
+        latest day). Each cell carries ``weekday`` (0=Mon) and ``week`` (column index).
+        """
+        by_day = {d["day"]: d["total_tokens"] for d in self.tokens_by_day()}
+        if not by_day:
+            return {
+                "days": [],
+                "first": None,
+                "last": None,
+                "weeks": 0,
+                "max_level": HEATMAP_MAX_LEVEL,
+            }
+        days_sorted = sorted(by_day)
+        anchor_str = today or days_sorted[-1]
+        try:
+            anchor = date.fromisoformat(anchor_str)
+        except ValueError:
+            anchor = date.fromisoformat(days_sorted[-1])
+        first = date.fromisoformat(days_sorted[0])
+        start = first - timedelta(days=first.weekday())  # back up to Monday
+        cells = []
+        cur = start
+        while cur <= anchor:
+            iso = cur.isoformat()
+            tok = by_day.get(iso, 0)
+            cells.append(
+                {
+                    "day": iso,
+                    "tokens": tok,
+                    "level": heatmap_level(tok),
+                    "weekday": cur.weekday(),
+                    "week": (cur - start).days // 7,
+                }
+            )
+            cur += timedelta(days=1)
+        return {
+            "days": cells,
+            "first": days_sorted[0],
+            "last": anchor.isoformat(),
+            "weeks": (anchor - start).days // 7 + 1,
+            "max_level": HEATMAP_MAX_LEVEL,
+        }
+
+
+# Documented, stable log-scale bins for the calendar heatmap. A day's level is the
+# number of upper edges it meets: 0 tokens → 0; <1M → 1; <10M → 2; <100M → 3;
+# <1B → 4; ≥1B → 5. Decade thresholds keep the scale stable across users/time.
+HEATMAP_BIN_EDGES = (1_000_000, 10_000_000, 100_000_000, 1_000_000_000)
+HEATMAP_MAX_LEVEL = len(HEATMAP_BIN_EDGES) + 1  # 5
+
+
+def heatmap_level(tokens: int) -> int:
+    if tokens <= 0:
+        return 0
+    level = 1
+    for edge in HEATMAP_BIN_EDGES:
+        if tokens >= edge:
+            level += 1
+    return level
 
 
 # Map window keys to their nominal length in minutes for Claude budget estimates.
