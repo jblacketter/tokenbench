@@ -225,6 +225,89 @@ class Analytics:
             series.append({"day": d, "total_tokens": by_day.get(d, 0)})
         return series
 
+    # -- usage drivers ------------------------------------------------------
+
+    def work_families(self, top_n: int = 3) -> list[dict[str, Any]]:
+        """Token burn grouped into work families by project path (path-only).
+
+        Each entry carries the family total, share %, and up to ``top_n`` evidence
+        projects (the biggest contributors), so the classification is transparent.
+        """
+        from .drivers import classify_project
+
+        agg: dict[str, dict[str, Any]] = {}
+        for r in self.rows:
+            family = classify_project(r.get("project_path"))
+            bucket = agg.setdefault(family, {"tokens": 0, "projects": {}})
+            bucket["tokens"] += r["total_tokens"]
+            path = r.get("project_path") or "unknown"
+            bucket["projects"][path] = bucket["projects"].get(path, 0) + r["total_tokens"]
+        total = sum(b["tokens"] for b in agg.values()) or 1
+        out = []
+        for family, bucket in agg.items():
+            evidence = sorted(bucket["projects"].items(), key=lambda kv: kv[1], reverse=True)
+            out.append(
+                {
+                    "family": family,
+                    "total_tokens": bucket["tokens"],
+                    "share": round(100.0 * bucket["tokens"] / total, 1),
+                    "evidence": [
+                        {"project": p, "total_tokens": t} for p, t in evidence[:top_n]
+                    ],
+                }
+            )
+        out.sort(key=lambda x: x["total_tokens"], reverse=True)
+        return out
+
+    def labeled_spikes(self, limit: int = 5, factor: float = 2.0) -> list[dict[str, Any]]:
+        """Recent spikes enriched with each day's dominant project and work family."""
+        from .drivers import classify_project
+
+        spikes = self.recent_spikes(limit=limit, factor=factor)
+        if not spikes:
+            return []
+        day_proj: dict[str, dict[str, int]] = {}
+        for r in self.rows:
+            d = _day(r["timestamp"])
+            if not d:
+                continue
+            p = r.get("project_path") or "unknown"
+            day_proj.setdefault(d, {})
+            day_proj[d][p] = day_proj[d].get(p, 0) + r["total_tokens"]
+        for s in spikes:
+            projs = day_proj.get(s["day"], {})
+            if projs:
+                top_project = max(projs.items(), key=lambda kv: kv[1])[0]
+                s["dominant_project"] = top_project
+                s["family"] = classify_project(top_project)
+            else:
+                s["dominant_project"] = None
+                s["family"] = None
+        return spikes
+
+    def trend_smoothed(
+        self, days: int = 30, window: int = 7, today: Optional[str] = None
+    ) -> list[dict[str, Any]]:
+        """Dense daily trend with a trailing moving average.
+
+        The moving average uses only the days already in the ``days`` window, so the
+        result is deterministic for a given ``today`` anchor (no wall-clock use).
+        """
+        base = self.trend(days=days, today=today)
+        vals = [d["total_tokens"] for d in base]
+        out = []
+        for i, d in enumerate(base):
+            lo = max(0, i - window + 1)
+            wnd = vals[lo : i + 1]
+            out.append(
+                {
+                    "day": d["day"],
+                    "total_tokens": d["total_tokens"],
+                    "moving_avg": round(sum(wnd) / len(wnd)) if wnd else 0,
+                }
+            )
+        return out
+
     # -- richer views -------------------------------------------------------
 
     def daily_by_provider(self) -> dict[str, dict[str, int]]:

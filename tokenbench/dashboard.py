@@ -61,37 +61,80 @@ def _bar_rows(
 
 
 def _trend_svg(series: list[dict[str, Any]]) -> str:
+    """Daily trend with a trailing moving-average overlay when present.
+
+    Each item is ``{day, total_tokens[, moving_avg]}``. The raw line is drawn faint
+    and the moving average bold so the smoothed direction reads at a glance.
+    """
     if not series:
         return '<p class="empty">Not enough data for a trend yet.</p>'
     w, h, pad = 720, 160, 24
     vals = [d["total_tokens"] for d in series]
-    vmax = max(vals) or 1
+    has_ma = "moving_avg" in series[0]
+    ma_vals = [d.get("moving_avg", 0) for d in series] if has_ma else []
+    vmax = max(vals + ma_vals) or 1
     n = len(series)
     step = (w - 2 * pad) / max(n - 1, 1)
-    pts = []
-    for i, v in enumerate(vals):
-        x = pad + i * step
-        y = h - pad - (h - 2 * pad) * (v / vmax)
-        pts.append(f"{x:.1f},{y:.1f}")
-    polyline = " ".join(pts)
+
+    def line(values):
+        return " ".join(
+            f"{pad + i * step:.1f},{h - pad - (h - 2 * pad) * (v / vmax):.1f}"
+            for i, v in enumerate(values)
+        )
+
+    raw_stroke = "#4f7cff" if not has_ma else "#34406a"
+    parts = [f'<polyline points="{line(vals)}" fill="none" stroke="{raw_stroke}" stroke-width="1.5"/>']
+    if has_ma:
+        parts.append(
+            f'<polyline points="{line(ma_vals)}" fill="none" stroke="#5a7ff0" stroke-width="2.5"/>'
+        )
     first, last = series[0]["day"], series[-1]["day"]
+    ma_note = " · bold = 7-day avg" if has_ma else ""
     return (
-        f'<svg viewBox="0 0 {w} {h}" class="trend" preserveAspectRatio="none">'
-        f'<polyline points="{polyline}" fill="none" stroke="#4f7cff" stroke-width="2"/>'
-        f"</svg>"
-        f'<div class="trend-axis"><span>{first}</span><span>peak {_fmt(vmax)}</span><span>{last}</span></div>'
+        f'<svg viewBox="0 0 {w} {h}" class="trend" preserveAspectRatio="none">{"".join(parts)}</svg>'
+        f'<div class="trend-axis"><span>{first}</span>'
+        f'<span>peak {_fmt(vmax)}{ma_note}</span><span>{last}</span></div>'
     )
 
 
 def _spike_rows(spikes: list[dict[str, Any]]) -> str:
     if not spikes:
         return '<p class="empty">No unusual spikes in the available data.</p>'
-    rows = [
-        f'<li><strong>{html.escape(s["day"])}</strong> — {_fmt(s["total_tokens"])} tokens '
-        f'<span class="ratio">{s["ratio"]}× median</span></li>'
-        for s in spikes
-    ]
+    rows = []
+    for s in spikes:
+        label = ""
+        fam = s.get("family")
+        if fam:
+            dom = _shorten_project(str(s.get("dominant_project") or ""))
+            label = (
+                f' <span class="muted">— {html.escape(fam)}'
+                f'{f" ({html.escape(dom)})" if dom else ""}</span>'
+            )
+        rows.append(
+            f'<li><strong>{html.escape(s["day"])}</strong> — {_fmt(s["total_tokens"])} tokens '
+            f'<span class="ratio">{s["ratio"]}× median</span>{label}</li>'
+        )
     return f'<ul class="spikes">{"".join(rows)}</ul>'
+
+
+def _drivers_section(families: list[dict[str, Any]]) -> str:
+    if not families:
+        return '<p class="empty">No data yet.</p>'
+    top = max((f["total_tokens"] for f in families), default=0) or 1
+    rows = []
+    for f in families:
+        pct = 100.0 * f["total_tokens"] / top
+        evidence = ", ".join(
+            _shorten_project(str(e["project"])) for e in f.get("evidence", [])
+        )
+        rows.append(
+            f'<div class="bar-row"><span class="bar-label" title="{html.escape(evidence)}">'
+            f'{html.escape(f["family"])}</span>'
+            f'<span class="bar-track"><span class="bar-fill" style="width:{pct:.1f}%"></span></span>'
+            f'<span class="bar-val">{f["share"]}%</span></div>'
+            f'<div class="muted small driver-evidence">{html.escape(evidence)}</div>'
+        )
+    return "\n".join(rows)
 
 
 def _session_rows(sessions: list[dict[str, Any]]) -> str:
@@ -350,6 +393,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .equiv { background: #0f1115; border-radius: 8px; padding: 14px; }
 .equiv-est { font-size: 20px; font-weight: 600; margin: 2px 0; }
 .equiv-basis { margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.driver-evidence { margin: -2px 0 8px 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 footer { padding: 16px 32px; color: #6b7080; font-size: 12px; }
 """
 
@@ -395,7 +439,9 @@ def render_html(store: UsageStore) -> str:
 
   <section class="wide"><h2>Daily burn heatmap</h2>{_heatmap_svg(analytics.heatmap())}</section>
 
-  <section class="wide"><h2>30-day trend</h2>{_trend_svg(analytics.trend())}</section>
+  <section class="wide"><h2>30-day trend</h2>{_trend_svg(analytics.trend_smoothed())}</section>
+
+  <section class="wide"><h2>Burn drivers</h2>{_drivers_section(analytics.work_families())}</section>
 
   <section class="wide"><h2>Scale equivalents</h2>{_equivalents_section(s.total_tokens)}</section>
 
@@ -403,7 +449,7 @@ def render_html(store: UsageStore) -> str:
   <section><h2>Model split</h2>{_bar_rows(analytics.model_split(), "model")}</section>
 
   <section><h2>Project breakdown</h2>{_bar_rows(analytics.project_breakdown(), "project", shorten=True)}</section>
-  <section><h2>Recent spikes</h2>{_spike_rows(analytics.recent_spikes())}</section>
+  <section><h2>Recent spikes</h2>{_spike_rows(analytics.labeled_spikes())}</section>
 
   <section class="wide"><h2>Top sessions</h2>{_session_rows(analytics.session_breakdown())}</section>
 
@@ -425,8 +471,9 @@ def render_json(store: UsageStore) -> dict[str, Any]:
         "model_split": analytics.model_split(),
         "project_breakdown": analytics.project_breakdown(),
         "session_breakdown": analytics.session_breakdown(),
-        "recent_spikes": analytics.recent_spikes(),
-        "trend": analytics.trend(),
+        "recent_spikes": analytics.labeled_spikes(),
+        "trend": analytics.trend_smoothed(),
+        "work_families": analytics.work_families(),
         "provider_windows": analytics.provider_windows(),
         "heatmap": analytics.heatmap(),
         "scale_equivalents": equivalents_as_dicts(analytics.summary().total_tokens),

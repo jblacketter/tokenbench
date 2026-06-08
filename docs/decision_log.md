@@ -6,6 +6,43 @@ This log tracks important decisions made during the project.
 
 ---
 
+## 2026-06-08: Burn drivers classified from project paths, not prompts
+
+**Decision:** Implement a "burn drivers" view that groups token usage into work
+families using a documented, ordered ruleset over the **project path only**
+(`tokenbench/drivers.py`), never prompt/response/code content.
+
+**Context:** Nate Jones' dashboard has a compelling "what's driving the burn?" view,
+but he classifies from session prompts. tokenbench's whole privacy posture is that
+prompts never reach storage, so we cannot (and will not) classify from content. The
+question was whether a useful version is possible without prompts.
+
+**Alternatives Considered:**
+- Prompt/content-based classification (like Nate's): rejected outright — it would
+  require storing or re-reading prompts, breaking the core privacy guarantee.
+- Learned/embedding classification: too heavy and non-deterministic for an offline,
+  dependency-free MVP.
+- No drivers view at all: leaves a real gap; the path-based version is good enough to
+  be useful (e.g. "Web & app 42%, QA/test 40%") while staying honest.
+
+**Rationale:** Project paths are already stored and are a strong proxy for *what* the
+work was. An ordered keyword ruleset (first match wins) with an explicit
+`Other / mixed` fallback is deterministic, documented, and transparent (the view
+shows evidence projects per family). A privacy test asserts the driver outputs never
+surface planted secret strings. This keeps the differentiator: the same actionable
+"what's driving the burn?" read as the prior art, with prompts never leaving the
+machine.
+
+**Decided By:** Human + Codex + Claude review
+
+**Phase:** usage-drivers
+
+**Follow-ups:**
+- Let users extend/override the family ruleset via config.
+- Optional log-scale toggle on the trend (moving-average overlay shipped).
+
+---
+
 ## 2026-06-08: Richer views over existing data; calendar heatmap on documented log bins
 
 **Decision:** Add a calendar burn heatmap, a per-provider receipts table, and Fermi

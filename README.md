@@ -38,7 +38,8 @@ python -m tokenbench limits
 The dashboard shows total tokens by day, provider/model split, project & session
 breakdowns, recent spikes, a 30-day trend, a **Limits** panel, a **per-provider
 receipts table** (Today / 7d / 30d / peak / active days / sparkline), a **calendar
-burn heatmap** (log scale), **scale equivalents** (Fermi estimates), and feedback cards
+burn heatmap** (log scale), **scale equivalents** (Fermi estimates), a **burn-drivers**
+view (work families by project path), and feedback cards
 that turn usage patterns into behavioral nudges (spike detection, cache-utilization
 hints, hidden reasoning budget, project hotspots, heavy single-thread warnings,
 limit-proximity warnings, burn rate, and model-mix concentration).
@@ -138,7 +139,7 @@ Run the tests with `pytest`. See `docs/roadmap.md` for the full plan and
 | 3 | Standardized benchmarks | Implemented (MVP) |
 | 4 | Actionable insights (limits, richer feedback) | Implemented (MVP) |
 | 5 | Richer views (heatmap, receipts, scale equivalents) | Implemented (MVP) |
-| 6 | Usage drivers (path-based work families, trend refinement) | In Progress |
+| 6 | Usage drivers (path-based work families, trend refinement) | Implemented (MVP) |
 | 7 | Project-scoped, pip-installable dashboard | Goal |
 
 See `docs/roadmap.md` for details.

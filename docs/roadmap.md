@@ -80,11 +80,18 @@ library, and a standardized benchmark suite. Privacy-first and dependency-free.
   - New analytics (`provider_windows`, `daily_by_provider`, `heatmap`) + `equivalents.py`
 
 ### Phase 6: Usage Drivers
-- **Status:** Not Started
+- **Status:** Implemented (MVP) — see `docs/phases/usage-drivers.md`
 - **Description:** A privacy-safe take on Nate's "burn drivers" view: classify token
   burn into work families by **project path** (we never store prompts), label spike
-  days by their dominant project, and add a moving-average + log-scale refinement to
-  the trend chart.
+  days by their dominant project, and refine the trend with a moving average.
+- **Delivered (MVP):**
+  - `tokenbench/drivers.py` — documented, ordered, path-only classifier with an
+    explicit `Other / mixed` fallback
+  - **Burn drivers** dashboard view — families by share % with evidence projects
+  - Recent spikes labeled with their dominant project / work family
+  - 7-day moving-average overlay on the daily trend
+  - `work_families`, `labeled_spikes`, `trend_smoothed` analytics; JSON API exposes
+    them; a privacy test asserts classification never surfaces content
 
 ### Phase 7: Project-Scoped, Pip-Installable Dashboard (Goal)
 - **Status:** Not Started — future goal
