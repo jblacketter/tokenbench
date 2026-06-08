@@ -30,12 +30,26 @@ python -m tokenbench serve --open
 
 # One-line summary of the current store:
 python -m tokenbench status
+
+# Limit proximity (Codex windows from logs) + recent burn rate:
+python -m tokenbench limits
 ```
 
 The dashboard shows total tokens by day, provider/model split, project & session
-breakdowns, recent spikes, a 30-day trend, and feedback cards that turn usage
-patterns into behavioral nudges (spike detection, cache-utilization hints, hidden
-reasoning budget, project hotspots, heavy single-thread warnings).
+breakdowns, recent spikes, a 30-day trend, a **Limits** panel, and feedback cards
+that turn usage patterns into behavioral nudges (spike detection, cache-utilization
+hints, hidden reasoning budget, project hotspots, heavy single-thread warnings,
+limit-proximity warnings, burn rate, and model-mix concentration).
+
+### Limits
+
+Codex rollouts record `rate_limits` locally, so the dashboard shows your **5-hour and
+weekly Codex windows** (used %, reset countdown, plan tier) straight from your logs.
+Claude Code logs carry **no** native limit data, so the Claude side is a
+*configurable-budget + burn-rate estimate*, clearly labeled — set a per-window budget
+to turn it into a percentage. An optional **API-equivalent value** figure estimates
+what your usage would cost on metered API pricing (offline, illustrative — not your
+subscription cost).
 
 ### Sources read
 
@@ -58,7 +72,8 @@ both queried rows and the raw database bytes.
 ### Current limitations
 
 - Token counts are read from local logs, so the dashboard reflects whatever those
-  logs contain (not live account billing or rate-limit state).
+  logs contain (not live account billing). Codex rate-limit windows come from the
+  logs; Claude limit proximity is an estimate (no native log data).
 - Codex per-turn deltas are derived from the cumulative running total; sessions that
   reset mid-stream are clamped at zero per turn but still sum to the session total.
 - Project attribution falls back to `unknown` when a log doesn't record a working
@@ -76,8 +91,9 @@ tokenbench/
     ingest.py               # Discover -> parse -> store, plus dry-run reporting
     analytics.py            # Daily/provider/model/project/session/spike/trend aggregates
     feedback.py             # Token-efficiency feedback cards
+    limits.py               # Configurable Claude budgets + offline pricing table
     dashboard.py            # Self-contained localhost web dashboard
-    cli.py                  # `tokenbench` CLI (ingest / serve / status / patterns / bench)
+    cli.py                  # CLI (ingest / serve / status / limits / patterns / bench)
     patterns/               # Phase 2 — measurement harness + scenario registry
     bench/                  # Phase 3 — benchmark cases + runner
   patterns/                 # Phase 2 — pattern docs (measurement tables generated)

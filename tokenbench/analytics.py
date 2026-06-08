@@ -13,6 +13,20 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 
+def _to_epoch(timestamp: str) -> Optional[float]:
+    """Parse an ISO-8601 timestamp to epoch seconds, tolerantly."""
+    if not timestamp:
+        return None
+    try:
+        return datetime.fromisoformat(timestamp.replace("Z", "+00:00")).timestamp()
+    except (ValueError, AttributeError):
+        return None
+
+
+def _now_epoch() -> float:
+    return datetime.now(timezone.utc).timestamp()
+
+
 def _day(timestamp: str) -> Optional[str]:
     """Extract a YYYY-MM-DD day key from an ISO timestamp, tolerantly."""
     if not timestamp:
@@ -156,6 +170,41 @@ class Analytics:
         spikes.sort(key=lambda d: d["day"], reverse=True)
         return spikes[:limit]
 
+    def burn_rate(self, hours: float = 5.0, now_epoch: Optional[float] = None) -> dict[str, Any]:
+        """Tokens consumed in the last ``hours`` and the implied tokens/hour.
+
+        ``now`` defaults to the latest event time so a stale store still reports a
+        meaningful recent-window rate.
+        """
+        pairs = [(_to_epoch(r["timestamp"]), r["total_tokens"]) for r in self.rows]
+        pairs = [(e, t) for e, t in pairs if e is not None]
+        if not pairs:
+            return {"hours": hours, "tokens": 0, "tokens_per_hour": 0}
+        now = now_epoch if now_epoch is not None else max(e for e, _ in pairs)
+        cutoff = now - hours * 3600
+        recent = sum(t for e, t in pairs if cutoff <= e <= now)
+        return {
+            "hours": hours,
+            "tokens": recent,
+            "tokens_per_hour": round(recent / hours) if hours else 0,
+        }
+
+    def provider_window_tokens(
+        self, provider: str, window_minutes: int, now_epoch: Optional[float] = None
+    ) -> int:
+        """Total tokens for ``provider`` within the last ``window_minutes``."""
+        pairs = [
+            (_to_epoch(r["timestamp"]), r["total_tokens"])
+            for r in self.rows
+            if r["provider"] == provider
+        ]
+        pairs = [(e, t) for e, t in pairs if e is not None]
+        if not pairs:
+            return 0
+        now = now_epoch if now_epoch is not None else max(e for e, _ in pairs)
+        cutoff = now - window_minutes * 60
+        return sum(t for e, t in pairs if cutoff <= e <= now)
+
     def trend(self, days: int = 30, today: Optional[str] = None) -> list[dict[str, Any]]:
         """Dense per-day series for the last ``days`` days (zero-filled).
 
@@ -175,3 +224,67 @@ class Analytics:
             d = (anchor - timedelta(days=i)).isoformat()
             series.append({"day": d, "total_tokens": by_day.get(d, 0)})
         return series
+
+
+# Map window keys to their nominal length in minutes for Claude budget estimates.
+_WINDOW_MINUTES = {"primary_5h": 300, "secondary_weekly": 10080}
+_WINDOW_LABEL = {"primary_5h": "5-hour", "secondary_weekly": "weekly"}
+
+
+class LimitAnalytics:
+    """Reads rate-limit snapshots and reports current limit proximity (Codex)."""
+
+    def __init__(self, store):
+        self.rows = [dict(r) for r in store.all_rate_limits()]
+
+    def current_status(self, now_epoch: Optional[float] = None) -> list[dict[str, Any]]:
+        """Latest snapshot per window with a reset countdown.
+
+        ``now`` defaults to wall-clock UTC; tests pass a fixed value.
+        """
+        now = now_epoch if now_epoch is not None else _now_epoch()
+        latest: dict[str, dict[str, Any]] = {}
+        for r in self.rows:
+            w = r["window"]
+            cur = latest.get(w)
+            if cur is None or r["timestamp"] > cur["timestamp"]:
+                latest[w] = r
+        out = []
+        for w, r in latest.items():
+            entry = dict(r)
+            entry["window_label"] = _WINDOW_LABEL.get(w, w)
+            ra = r.get("resets_at")
+            entry["reset_in_seconds"] = max(0, int(ra - now)) if ra else None
+            out.append(entry)
+        out.sort(key=lambda x: x["window"])
+        return out
+
+
+def claude_budget_status(
+    analytics: Analytics, budget, now_epoch: Optional[float] = None
+) -> list[dict[str, Any]]:
+    """Estimated Claude window usage vs an optional configured budget.
+
+    Always an estimate (Claude logs carry no native limit data). When a window's
+    budget is unset, ``used_percent`` and ``budget_tokens`` are ``None`` and callers
+    should render a "configure to enable" state.
+    """
+    out = []
+    for window, cap in (
+        ("primary_5h", getattr(budget, "five_hour_tokens", None)),
+        ("secondary_weekly", getattr(budget, "weekly_tokens", None)),
+    ):
+        minutes = _WINDOW_MINUTES[window]
+        used = analytics.provider_window_tokens("claude", minutes, now_epoch)
+        out.append(
+            {
+                "window": window,
+                "window_label": _WINDOW_LABEL[window],
+                "window_minutes": minutes,
+                "used_tokens": used,
+                "budget_tokens": cap,
+                "used_percent": round(100.0 * used / cap, 1) if cap else None,
+                "estimate": True,
+            }
+        )
+    return out

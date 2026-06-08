@@ -48,6 +48,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_status = sub.add_parser("status", help="Summarize the current store")
     _add_common(p_status)
 
+    p_limits = sub.add_parser(
+        "limits", help="Show current rate-limit proximity and recent burn rate"
+    )
+    _add_common(p_limits)
+
     p_patterns = sub.add_parser(
         "patterns", help="Run the token-efficiency pattern measurements (offline)"
     )
@@ -126,6 +131,40 @@ def cmd_status(args) -> int:
     return 0
 
 
+def cmd_limits(args) -> int:
+    from .analytics import Analytics, LimitAnalytics, claude_budget_status, _now_epoch
+    from .limits import DEFAULT_CLAUDE_BUDGET
+
+    now = _now_epoch()
+    with UsageStore(args.db) as store:
+        analytics = Analytics(store)
+        codex = LimitAnalytics(store).current_status(now_epoch=now)
+        claude = claude_budget_status(analytics, DEFAULT_CLAUDE_BUDGET, now_epoch=now)
+        burn = analytics.burn_rate(now_epoch=now)
+
+    def _countdown(sec):
+        if not sec:
+            return ""
+        h = sec // 3600
+        return f"  (resets in ~{h // 24}d)" if h >= 24 else f"  (resets in ~{h}h)"
+
+    print("Codex (from logs):")
+    if codex:
+        for w in codex:
+            plan = f" [{w['plan_type']}]" if w.get("plan_type") else ""
+            print(f"  {w['window_label']:<7} {w['used_percent']:>5.1f}% used{plan}{_countdown(w.get('reset_in_seconds'))}")
+    else:
+        print("  no rate-limit data ingested")
+    print("Claude (estimate — logs carry no native limits):")
+    for w in claude:
+        if w.get("budget_tokens"):
+            print(f"  {w['window_label']:<7} {w['used_percent']:>5.1f}% of {w['budget_tokens']:,} (est.)")
+        else:
+            print(f"  {w['window_label']:<7} {w['used_tokens']:,} tokens used — set a budget to get %")
+    print(f"Burn rate: ~{burn['tokens_per_hour']:,} tokens/hour over last {int(burn['hours'])}h")
+    return 0
+
+
 def cmd_patterns(args) -> int:
     from .patterns import all_scenarios, render_markdown, render_table
 
@@ -176,6 +215,7 @@ def main(argv: list[str] | None = None) -> int:
         "ingest": cmd_ingest,
         "serve": cmd_serve,
         "status": cmd_status,
+        "limits": cmd_limits,
         "patterns": cmd_patterns,
         "bench": cmd_bench,
     }

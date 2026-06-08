@@ -24,7 +24,12 @@ import json
 from pathlib import Path
 from typing import Any, Iterator, Optional
 
-from .schema import UsageEvent
+from .schema import (
+    UsageEvent,
+    RateLimitSnapshot,
+    WINDOW_PRIMARY,
+    WINDOW_SECONDARY,
+)
 from .sources import decode_claude_project_dir
 
 
@@ -234,3 +239,64 @@ def parse_codex_file(path: Path) -> list[UsageEvent]:
             )
         )
     return events
+
+
+_CODEX_WINDOW_MAP = {"primary": WINDOW_PRIMARY, "secondary": WINDOW_SECONDARY}
+
+
+def parse_codex_rate_limits(path: Path) -> list[RateLimitSnapshot]:
+    """Extract rate-limit snapshots from a Codex rollout.
+
+    Scanned INDEPENDENTLY of usage-event emission: ``rate_limits`` can ride on rows
+    whose cumulative token total didn't advance (which the usage parser skips), so
+    reading them here ensures a no-op row can't drop the latest limit state. Keeps the
+    latest reading per (session, window) by timestamp.
+    """
+    records = list(_read_jsonl(path))
+    if not records:
+        return []
+    ctx = _codex_session_context(records)
+    session_id = str(ctx["session_id"] or path.stem)
+
+    # window -> (timestamp, snapshot) keeping the newest timestamp seen.
+    latest: dict[str, tuple[str, RateLimitSnapshot]] = {}
+    for rec in records:
+        payload = rec.get("payload")
+        if not isinstance(payload, dict):
+            continue
+        rate_limits = payload.get("rate_limits")
+        if not isinstance(rate_limits, dict):
+            continue
+        timestamp = str(rec.get("timestamp") or rec.get("ts") or "")
+        plan_type = rate_limits.get("plan_type")
+        for codex_key, window in _CODEX_WINDOW_MAP.items():
+            block = rate_limits.get(codex_key)
+            if not isinstance(block, dict):
+                continue
+            used = block.get("used_percent")
+            if used is None:
+                continue
+            snap = RateLimitSnapshot(
+                id=_stable_id("codex_rl", session_id, window),
+                provider="codex",
+                source=str(path),
+                session_id=session_id,
+                timestamp=timestamp,
+                window=window,
+                used_percent=float(used),
+                window_minutes=(
+                    _as_int(block.get("window_minutes"))
+                    if block.get("window_minutes") is not None
+                    else None
+                ),
+                resets_at=(
+                    _as_int(block.get("resets_at"))
+                    if block.get("resets_at") is not None
+                    else None
+                ),
+                plan_type=str(plan_type) if plan_type else None,
+            )
+            prev = latest.get(window)
+            if prev is None or timestamp >= prev[0]:
+                latest[window] = (timestamp, snap)
+    return [snap for _, snap in latest.values()]

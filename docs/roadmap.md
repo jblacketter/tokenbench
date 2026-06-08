@@ -50,6 +50,34 @@ library, and a standardized benchmark suite. Privacy-first and dependency-free.
   - Exact-tokenizer mode alongside the char-proxy
   - Published/exported benchmark results
 
+### Phase 4: Actionable Insights
+- **Status:** Implemented (MVP) — see `docs/phases/actionable-insights.md`
+- **Description:** Turn the dashboard from *what happened* into *what to do about it*.
+- **Delivered (MVP):**
+  - **Limit proximity** — Codex 5-hour + weekly windows read straight from local
+    `rate_limits` log data (used %, reset countdown, plan tier), stored in a
+    privacy-preserving `rate_limit_snapshots` table. Claude has no native log limits,
+    so it shows a configurable-budget + burn-rate **estimate**, clearly labeled.
+  - **Richer feedback cards** — limit-proximity warnings, recent burn rate, and
+    model-mix concentration, on top of the existing cards.
+  - **Project Breakdown** now shows the project name (basename) with the full path on
+    hover.
+  - **`tokenbench limits`** CLI; optional offline **API-equivalent value** estimate
+    (not subscription cost; no network).
+  - Informed by prior art: ccusage, tokscale, CodexBar, codex-usage-tracker (the last
+    independently validates tokenbench's aggregate-only, no-prompts privacy model).
+
+### Phase 5: Project-Scoped, Pip-Installable Dashboard (Goal)
+- **Status:** Not Started — future goal
+- **Description:** Install tokenbench as a dependency in another project and track
+  token usage **scoped to that project** (a per-project dashboard), instead of the
+  machine-wide view.
+- **Feasibility:** Feasible. The package already ships a console script via
+  `pyproject.toml`. Scoping mainly needs a `--project <path>` / cwd filter on
+  discovery (Claude: match the encoded project dir to the path; Codex: filter by
+  session `cwd`) plus an analytics filter; the storage and rendering layers are
+  already path-aware.
+
 ## Core Principles
 
 1. **Measure, don't guess** — Always real token counts, not estimates

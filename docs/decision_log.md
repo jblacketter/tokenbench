@@ -6,6 +6,48 @@ This log tracks important decisions made during the project.
 
 ---
 
+## 2026-06-08: Limit proximity from logs (Codex) + labeled estimate (Claude)
+
+**Decision:** Add limit-proximity awareness by ingesting Codex `rate_limits` from
+local logs into a dedicated `rate_limit_snapshots` table, and representing the Claude
+side as a configurable-budget + burn-rate **estimate** (never a fabricated hard
+limit). Read rate-limit data independently of usage-event emission.
+
+**Context:** Users want to know how close they are to provider limits. Verified that
+Codex rollouts carry `payload.rate_limits` (5-hour + weekly windows, `used_percent`,
+`resets_at`, `plan_type`) while Claude Code logs carry **no** quota/limit fields at
+all. Prior art (ccusage, tokscale, CodexBar, codex-usage-tracker) confirmed both the
+value of window/reset displays and tokenbench's aggregate-only privacy posture.
+
+**Alternatives Considered:**
+- Derive Codex limits from emitted usage events: rejected — the Codex usage parser
+  skips no-op cumulative rows, and `rate_limits` can ride on exactly those rows, so
+  the latest limit state could be silently dropped. Read it directly from
+  `token_count` rows instead.
+- Show a fabricated Claude limit number: rejected — there is no source data; a
+  made-up percentage would be misleading. Use an explicit, labeled estimate that is
+  blank until the user configures a budget.
+- Live account-API limit scraping: rejected — out of scope and breaks the local-only,
+  offline, privacy-first posture.
+
+**Rationale:** Reading `rate_limits` directly is both correct (no-op-row safe) and
+cheap. Keeping Claude as a clearly-labeled estimate is honest. The new table stores
+only numbers/enums, and the privacy regression test was extended to scan it. An
+optional **API-equivalent value** figure uses a static, offline pricing table and is
+explicitly framed as metered-API cost, not subscription cost.
+
+**Decided By:** Human + Codex + Claude review
+
+**Phase:** actionable-insights
+
+**Follow-ups:**
+- A project-scoped, pip-installable per-project dashboard (recorded as a roadmap
+  goal; feasibility assessed in `docs/roadmap.md`).
+- Let users persist a `ClaudeBudget` (and pricing overrides) via config rather than
+  code.
+
+---
+
 ## 2026-06-07: Benchmarks = a committed, regenerable results artifact with a sync guard
 
 **Decision:** Implement Phase 4 as a multi-approach benchmark suite

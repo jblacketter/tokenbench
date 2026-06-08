@@ -12,8 +12,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
 
-from .parsers import parse_claude_file, parse_codex_file
-from .schema import UsageEvent
+from .parsers import parse_claude_file, parse_codex_file, parse_codex_rate_limits
+from .schema import UsageEvent, RateLimitSnapshot
 from .sources import SourceDiscovery, discover_all
 from .storage import UsageStore, DEFAULT_DB_PATH
 
@@ -53,6 +53,7 @@ class ProviderReport:
 class IngestResult:
     reports: list[ProviderReport] = field(default_factory=list)
     written: int = 0
+    rate_limits_written: int = 0
     dry_run: bool = False
 
     @property
@@ -85,39 +86,55 @@ def _summarize(provider: str, disc: SourceDiscovery, events: list[UsageEvent]) -
     return report
 
 
-def collect(home: Path | None = None) -> tuple[list[ProviderReport], list[UsageEvent]]:
-    """Discover + parse all providers. Returns (reports, all_events). No writes."""
+def collect(
+    home: Path | None = None,
+) -> tuple[list[ProviderReport], list[UsageEvent], list[RateLimitSnapshot]]:
+    """Discover + parse all providers. Returns (reports, events, rate_limits). No writes."""
     reports: list[ProviderReport] = []
     all_events: list[UsageEvent] = []
+    all_rate_limits: list[RateLimitSnapshot] = []
     for disc in discover_all(home):
         parser = _PARSERS[disc.provider]
         provider_events: list[UsageEvent] = []
         for path in disc.files:
             provider_events.extend(parser(path))
+            if disc.provider == "codex":
+                all_rate_limits.extend(parse_codex_rate_limits(path))
         reports.append(_summarize(disc.provider, disc, provider_events))
         all_events.extend(provider_events)
-    return reports, all_events
+    return reports, all_events, all_rate_limits
 
 
 def dry_run(home: Path | None = None) -> IngestResult:
-    reports, events = collect(home)
-    return IngestResult(reports=reports, written=0, dry_run=True)
+    reports, events, rate_limits = collect(home)
+    return IngestResult(
+        reports=reports, written=0, rate_limits_written=0, dry_run=True
+    )
 
 
 def ingest(
     home: Path | None = None,
     db_path: Path | str = DEFAULT_DB_PATH,
 ) -> IngestResult:
-    reports, events = collect(home)
+    reports, events, rate_limits = collect(home)
     with UsageStore(db_path) as store:
         written = store.upsert_events(events)
-    return IngestResult(reports=reports, written=written, dry_run=False)
+        rl_written = store.upsert_rate_limits(rate_limits)
+    return IngestResult(
+        reports=reports, written=written, rate_limits_written=rl_written, dry_run=False
+    )
 
 
 def format_report(result: IngestResult) -> str:
     """Human-readable summary for the CLI."""
     lines: list[str] = []
-    header = "DRY RUN — no data written" if result.dry_run else f"Ingested {result.written} events"
+    if result.dry_run:
+        header = "DRY RUN — no data written"
+    else:
+        header = (
+            f"Ingested {result.written} events, "
+            f"{result.rate_limits_written} rate-limit snapshots"
+        )
     lines.append(header)
     lines.append("=" * len(header))
     for r in result.reports:

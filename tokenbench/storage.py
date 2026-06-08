@@ -13,7 +13,7 @@ import sqlite3
 from pathlib import Path
 from typing import Iterable, Optional
 
-from .schema import UsageEvent
+from .schema import UsageEvent, RateLimitSnapshot
 
 DEFAULT_DB_PATH = Path("data/tokenbench.sqlite3")
 
@@ -37,6 +37,21 @@ CREATE TABLE IF NOT EXISTS usage_events (
 CREATE INDEX IF NOT EXISTS idx_usage_timestamp ON usage_events(timestamp);
 CREATE INDEX IF NOT EXISTS idx_usage_provider ON usage_events(provider);
 CREATE INDEX IF NOT EXISTS idx_usage_session ON usage_events(session_id);
+
+CREATE TABLE IF NOT EXISTS rate_limit_snapshots (
+    id             TEXT PRIMARY KEY,
+    provider       TEXT NOT NULL,
+    source         TEXT NOT NULL,
+    session_id     TEXT NOT NULL,
+    timestamp      TEXT NOT NULL,
+    window         TEXT NOT NULL,
+    used_percent   REAL NOT NULL DEFAULT 0,
+    window_minutes INTEGER,
+    resets_at      INTEGER,
+    plan_type      TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_rl_window ON rate_limit_snapshots(window);
+CREATE INDEX IF NOT EXISTS idx_rl_timestamp ON rate_limit_snapshots(timestamp);
 """
 
 
@@ -85,16 +100,38 @@ class UsageStore:
         cur = self.conn.execute("SELECT * FROM usage_events ORDER BY timestamp")
         return cur.fetchall()
 
+    def upsert_rate_limits(self, snapshots: Iterable[RateLimitSnapshot]) -> int:
+        """Insert or replace rate-limit snapshots by id. Whitelisted columns only."""
+        rows = [s.as_persisted_dict() for s in snapshots]
+        if not rows:
+            return 0
+        cols = list(rows[0].keys())
+        placeholders = ", ".join(f":{c}" for c in cols)
+        sql = (
+            f"INSERT OR REPLACE INTO rate_limit_snapshots ({', '.join(cols)}) "
+            f"VALUES ({placeholders})"
+        )
+        self.conn.executemany(sql, rows)
+        self.conn.commit()
+        return len(rows)
+
+    def all_rate_limits(self) -> list[sqlite3.Row]:
+        cur = self.conn.execute("SELECT * FROM rate_limit_snapshots ORDER BY timestamp")
+        return cur.fetchall()
+
     def count(self) -> int:
         return self.conn.execute("SELECT COUNT(*) FROM usage_events").fetchone()[0]
 
     def dump_text(self) -> str:
-        """Return every stored value as one big string.
+        """Return every stored value (both tables) as one big string.
 
         Used by the privacy regression test to scan for forbidden substrings.
         """
         parts: list[str] = []
         for row in self.all_events():
+            for key in row.keys():
+                parts.append(str(row[key]))
+        for row in self.all_rate_limits():
             for key in row.keys():
                 parts.append(str(row[key]))
         return "\n".join(parts)

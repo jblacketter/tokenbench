@@ -29,7 +29,21 @@ def _pct(part: int, whole: int) -> float:
     return round(100.0 * part / whole, 1) if whole else 0.0
 
 
-def build_feedback(analytics: Analytics) -> list[FeedbackCard]:
+def _format_reset(seconds: Optional[int]) -> str:
+    if not seconds:
+        return ""
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    if hours >= 24:
+        return f", resets in ~{hours // 24}d"
+    if hours >= 1:
+        return f", resets in ~{hours}h"
+    return f", resets in ~{max(1, minutes)}m"
+
+
+def build_feedback(
+    analytics: Analytics, limit_status: Optional[list[dict[str, Any]]] = None
+) -> list[FeedbackCard]:
     cards: list[FeedbackCard] = []
     summary = analytics.summary()
 
@@ -102,6 +116,66 @@ def build_feedback(analytics: Analytics) -> list[FeedbackCard]:
                 "same outcome for fewer tokens.",
             )
         )
+
+    # 3b. Limit proximity (Codex, straight from logs).
+    for w in limit_status or []:
+        up = w.get("used_percent")
+        if up is None or up < 75:
+            continue
+        severity = "alert" if up >= 90 else "watch"
+        label = w.get("window_label", w.get("window", "window"))
+        cards.append(
+            FeedbackCard(
+                key=f"limit_{w.get('window')}",
+                title=f"Approaching {label} limit",
+                severity=severity,
+                detail=f"Your Codex {label} window is at {up}% used"
+                f"{_format_reset(w.get('reset_in_seconds'))}. Pace heavy sessions or "
+                "switch tasks until it resets to avoid getting throttled.",
+            )
+        )
+
+    # 3c. Recent burn rate.
+    burn = analytics.burn_rate()
+    if burn["tokens"] > 0:
+        cards.append(
+            FeedbackCard(
+                key="burn_rate",
+                title="Recent burn rate",
+                severity="info",
+                detail=f"~{burn['tokens_per_hour']:,} tokens/hour over the last "
+                f"{int(burn['hours'])}h ({burn['tokens']:,} tokens). Compare this against "
+                "your limit windows to see how much runway you have.",
+            )
+        )
+
+    # 3d. Model-mix concentration.
+    models = analytics.model_split()
+    if len(models) > 1 and summary.total_tokens > 0:
+        top = models[0]
+        share = _pct(top["total_tokens"], summary.total_tokens)
+        name = top.get("model") or "unknown"
+        if share >= 60 and "opus" in name.lower():
+            cards.append(
+                FeedbackCard(
+                    key="model_mix",
+                    title="Premium model dominates",
+                    severity="watch",
+                    detail=f"{share}% of tokens went to `{name}`. For routine edits or "
+                    "search-heavy steps, a smaller model often delivers the same outcome "
+                    "for far fewer tokens.",
+                )
+            )
+        elif share >= 80:
+            cards.append(
+                FeedbackCard(
+                    key="model_mix",
+                    title="Single-model usage",
+                    severity="info",
+                    detail=f"{share}% of tokens went to `{name}`. Mixing in a cheaper "
+                    "model for lighter tasks is an easy efficiency win.",
+                )
+            )
 
     # 4. Project hotspots — concentration of usage.
     projects = analytics.project_breakdown()

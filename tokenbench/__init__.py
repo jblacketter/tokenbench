@@ -12,6 +12,12 @@ regression test for the enforced guarantee.
 
 __version__ = "0.1.0"
 
-from .schema import UsageEvent, PERSISTED_FIELDS
+from .schema import UsageEvent, PERSISTED_FIELDS, RateLimitSnapshot, RL_PERSISTED_FIELDS
 
-__all__ = ["UsageEvent", "PERSISTED_FIELDS", "__version__"]
+__all__ = [
+    "UsageEvent",
+    "PERSISTED_FIELDS",
+    "RateLimitSnapshot",
+    "RL_PERSISTED_FIELDS",
+    "__version__",
+]

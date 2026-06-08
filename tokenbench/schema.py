@@ -90,3 +90,53 @@ _FIELD_NAMES = {f.name for f in fields(UsageEvent)}
 assert set(PERSISTED_FIELDS) <= _FIELD_NAMES, (
     f"PERSISTED_FIELDS references unknown fields: {set(PERSISTED_FIELDS) - _FIELD_NAMES}"
 )
+
+
+# Persisted columns for rate-limit snapshots — numbers/enums only, no raw content.
+RL_PERSISTED_FIELDS = (
+    "id",
+    "provider",
+    "source",
+    "session_id",
+    "timestamp",
+    "window",
+    "used_percent",
+    "window_minutes",
+    "resets_at",
+    "plan_type",
+)
+
+# Recognized window keys.
+WINDOW_PRIMARY = "primary_5h"
+WINDOW_SECONDARY = "secondary_weekly"
+
+
+@dataclass
+class RateLimitSnapshot:
+    """One provider rate-limit reading for a single window at a point in time.
+
+    Sourced from Codex rollout ``payload.rate_limits``. ``resets_at`` is epoch
+    **seconds** (matching the Codex log). Only numeric/enum fields are persisted —
+    no prompt, response, code, or secret content can be represented here.
+    """
+
+    id: str
+    provider: str  # "codex" (Claude logs carry no native limit data)
+    source: str
+    session_id: str
+    timestamp: str  # ISO-8601 of the reading
+    window: str  # WINDOW_PRIMARY | WINDOW_SECONDARY
+    used_percent: float = 0.0
+    window_minutes: Optional[int] = None
+    resets_at: Optional[int] = None  # epoch SECONDS
+    plan_type: Optional[str] = None
+
+    def as_persisted_dict(self) -> dict[str, Any]:
+        full = asdict(self)
+        return {k: full[k] for k in RL_PERSISTED_FIELDS}
+
+
+_RL_FIELD_NAMES = {f.name for f in fields(RateLimitSnapshot)}
+assert set(RL_PERSISTED_FIELDS) <= _RL_FIELD_NAMES, (
+    f"RL_PERSISTED_FIELDS references unknown fields: {set(RL_PERSISTED_FIELDS) - _RL_FIELD_NAMES}"
+)
